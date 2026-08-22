@@ -32,7 +32,9 @@ player who was answering a different question.
 ## Project Structure
 
 - `backend/`: Go coordinator, game server, API contracts, migrations, and tests.
+- `frontend/`: React client for creating, joining, and playing games.
 - `game_design/`: Product scenarios and game rules.
 
-See [`backend/README.md`](backend/README.md) for local development commands and
+See [`backend/README.md`](backend/README.md) and
+[`frontend/README.md`](frontend/README.md) for local development commands and
 service configuration.

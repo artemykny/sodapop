@@ -28,3 +28,11 @@ player who was answering a different question.
 - Coordinator service and game servers run as separate deployed services.
 - Game servers own active rooms and keep game state in memory.
 - Game servers write room snapshots to PostgreSQL.
+
+## Project Structure
+
+- `backend/`: Go coordinator, game server, API contracts, migrations, and tests.
+- `game_design/`: Product scenarios and game rules.
+
+See [`backend/README.md`](backend/README.md) for local development commands and
+service configuration.

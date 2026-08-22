@@ -1,0 +1,123 @@
+openapi: 3.1.0
+info:
+  title: Skewa Coordinator API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /healthz:
+    get:
+      operationId: coordinatorHealth
+      responses:
+        "200":
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /v1/rooms:
+    post:
+      operationId: createRoom
+      summary: Create a room on an assigned game server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./game-server.openapi.yaml#/components/schemas/CreateRoomRequest"
+      responses:
+        "201":
+          description: Room created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "./game-server.openapi.yaml#/components/schemas/Session"
+                  - type: object
+                    required: [game_server_url]
+                    properties:
+                      game_server_url:
+                        type: string
+                        format: uri
+        "409":
+          $ref: "#/components/responses/Problem"
+        "502":
+          $ref: "#/components/responses/Problem"
+    get:
+      operationId: resolveRoomByName
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Room assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/rooms/{roomId}:
+    get:
+      operationId: resolveRoomById
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      responses:
+        "200":
+          description: Room assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "404":
+          $ref: "#/components/responses/Problem"
+components:
+  parameters:
+    RoomId:
+      name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          const: ok
+    Assignment:
+      type: object
+      required: [room_id, room_name, game_server_url]
+      properties:
+        room_id:
+          type: string
+        room_name:
+          type: string
+        game_server_url:
+          type: string
+          format: uri
+    Problem:
+      type: object
+      required: [type, title, status, code, detail]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        detail:
+          type: string
+  responses:
+    Problem:
+      description: Request failed
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"

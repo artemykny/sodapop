@@ -1,0 +1,302 @@
+openapi: 3.1.0
+info:
+  title: Skewa Game Server API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8081
+paths:
+  /healthz:
+    get:
+      operationId: gameServerHealth
+      responses:
+        "200":
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    const: ok
+  /v1/rooms:
+    post:
+      operationId: createRoomOnGameServer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoomRequest"
+      responses:
+        "201":
+          description: Room and host session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/rooms/{roomId}:
+    get:
+      operationId: getRoomState
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      responses:
+        "200":
+          description: Player-specific room state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomView"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/rooms/{roomId}/players:
+    post:
+      operationId: joinRoom
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [display_name, password]
+              properties:
+                display_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 30
+                password:
+                  type: string
+                  maxLength: 100
+      responses:
+        "201":
+          description: Player session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /v1/rooms/{roomId}/ws:
+    get:
+      operationId: connectToRoom
+      summary: Upgrade to the Skewa room WebSocket protocol
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      responses:
+        "101":
+          description: WebSocket connection established
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    RoomId:
+      name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    CreateRoomRequest:
+      type: object
+      additionalProperties: false
+      required: [name, password, host_name, settings, questions]
+      properties:
+        room_id:
+          type: string
+          description: Optional coordinator-assigned identifier
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        password:
+          type: string
+          maxLength: 100
+        host_name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        settings:
+          $ref: "#/components/schemas/Settings"
+        questions:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/Question"
+    Settings:
+      type: object
+      additionalProperties: false
+      required: [player_limit, answer_seconds, discussion_seconds, voting_seconds, rounds]
+      properties:
+        player_limit:
+          type: integer
+          minimum: 3
+          maximum: 20
+        answer_seconds:
+          type: integer
+          minimum: 5
+          maximum: 900
+        discussion_seconds:
+          type: integer
+          minimum: 5
+          maximum: 3600
+        voting_seconds:
+          type: integer
+          minimum: 5
+          maximum: 900
+        rounds:
+          type: integer
+          minimum: 1
+          maximum: 50
+    Question:
+      type: object
+      additionalProperties: false
+      required: [real, fake]
+      properties:
+        real:
+          type: string
+          minLength: 1
+          maxLength: 500
+        fake:
+          type: string
+          minLength: 1
+          maxLength: 500
+    Credentials:
+      type: object
+      required: [room_id, player_id, token]
+      properties:
+        room_id:
+          type: string
+        player_id:
+          type: string
+        token:
+          type: string
+    Session:
+      allOf:
+        - $ref: "#/components/schemas/Credentials"
+        - type: object
+          required: [websocket_path, state]
+          properties:
+            websocket_path:
+              type: string
+            state:
+              $ref: "#/components/schemas/RoomView"
+    Player:
+      type: object
+      required: [id, display_name, is_host, connected, score]
+      properties:
+        id:
+          type: string
+        display_name:
+          type: string
+        is_host:
+          type: boolean
+        connected:
+          type: boolean
+        score:
+          type: integer
+    Answer:
+      type: object
+      required: [player_id, player_name, text]
+      properties:
+        player_id:
+          type: string
+        player_name:
+          type: string
+        text:
+          type: string
+    RoundResult:
+      type: object
+      required: [imposter_id, found, vote_counts]
+      properties:
+        imposter_id:
+          type: string
+        found:
+          type: boolean
+        vote_counts:
+          type: object
+          additionalProperties:
+            type: integer
+    RoomView:
+      type: object
+      required: [version, room_id, room_name, phase, settings, players, round, your_player_id, answer_locked, vote_locked]
+      properties:
+        version:
+          type: integer
+          minimum: 0
+        room_id:
+          type: string
+        room_name:
+          type: string
+        phase:
+          enum: [lobby, answering, discussion, voting, round_result, finished]
+        settings:
+          $ref: "#/components/schemas/Settings"
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+        round:
+          type: integer
+        deadline:
+          type: [string, "null"]
+          format: date-time
+        your_player_id:
+          type: string
+        your_prompt:
+          type: string
+        answer_locked:
+          type: boolean
+        vote_locked:
+          type: boolean
+        real_question:
+          type: string
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Answer"
+        result:
+          oneOf:
+            - $ref: "#/components/schemas/RoundResult"
+            - type: "null"
+    Problem:
+      type: object
+      required: [type, title, status, code, detail]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        detail:
+          type: string
+  responses:
+    Problem:
+      description: Request failed
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"

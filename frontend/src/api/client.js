@@ -21,6 +21,11 @@ async function request(url, options = {}) {
   return body;
 }
 
+export async function getQuestionPacks() {
+  const catalog = await request(`${coordinatorUrl}/v1/question-packs`);
+  return catalog.packs || [];
+}
+
 export async function createRoom(payload) {
   const session = await request(`${coordinatorUrl}/v1/rooms`, {
     method: "POST",

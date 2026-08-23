@@ -32,7 +32,8 @@ player who was answering a different question.
 ## Project Structure
 
 - `backend/`: Go coordinator, game server, API contracts, migrations, and tests.
-- `frontend/`: React client for creating, joining, and playing games.
+- `backend/internal/questionpacks/`: backend-owned built-in question catalog.
+- `frontend/`: modular React client for creating, joining, and playing games.
 - `game_design/`: Product scenarios and game rules.
 
 See [`backend/README.md`](backend/README.md) and

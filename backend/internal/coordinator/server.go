@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/ak/skewa/backend/internal/middleware"
+	"github.com/ak/skewa/backend/internal/questionpacks"
 )
 
 const maxBodyBytes = 1 << 20
@@ -66,6 +67,7 @@ func New(gameServers []string, client *http.Client, logger *slog.Logger, originP
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
+	mux.HandleFunc("GET /v1/question-packs", s.questionPacks)
 	mux.HandleFunc("POST /v1/rooms", s.createRoom)
 	mux.HandleFunc("GET /v1/rooms/{roomID}", s.resolveByID)
 	mux.HandleFunc("GET /v1/rooms", s.resolveByName)
@@ -74,6 +76,10 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) questionPacks(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"packs": questionpacks.List()})
 }
 
 func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {

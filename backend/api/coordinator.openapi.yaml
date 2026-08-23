@@ -13,8 +13,19 @@ paths:
           description: Service is running
           content:
             application/json:
+                  schema:
+                    $ref: "#/components/schemas/Health"
+  /v1/question-packs:
+    get:
+      operationId: listQuestionPacks
+      summary: List built-in question-pack metadata
+      responses:
+        "200":
+          description: Available built-in packs; question text remains server-side
+          content:
+            application/json:
               schema:
-                $ref: "#/components/schemas/Health"
+                $ref: "./game-server.openapi.yaml#/components/schemas/QuestionPackCatalog"
   /v1/rooms:
     post:
       operationId: createRoom

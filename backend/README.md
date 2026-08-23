@@ -7,6 +7,11 @@ The backend contains two Go services:
 - `coordinator` selects a game server when a room is created and resolves room
   names or IDs to that server.
 
+Built-in question packs live in `internal/questionpacks`. Both services expose
+pack metadata at `GET /v1/question-packs`, while the question text remains on
+the backend. Room creation accepts either a backend `question_pack` identifier
+or host-supplied custom `questions`, but never both.
+
 ## Requirements
 
 - Go 1.26 or newer

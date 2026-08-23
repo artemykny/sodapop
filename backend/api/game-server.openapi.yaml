@@ -19,6 +19,17 @@ paths:
                 properties:
                   status:
                     const: ok
+  /v1/question-packs:
+    get:
+      operationId: listQuestionPacksOnGameServer
+      summary: List built-in question-pack metadata
+      responses:
+        "200":
+          description: Available built-in packs; question text remains server-side
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionPackCatalog"
   /v1/rooms:
     post:
       operationId: createRoomOnGameServer
@@ -120,7 +131,10 @@ components:
     CreateRoomRequest:
       type: object
       additionalProperties: false
-      required: [name, password, host_name, settings, questions]
+      required: [name, password, host_name, settings]
+      oneOf:
+        - required: [question_pack]
+        - required: [questions]
       properties:
         room_id:
           type: string
@@ -138,8 +152,12 @@ components:
           maxLength: 30
         settings:
           $ref: "#/components/schemas/Settings"
+        question_pack:
+          type: string
+          description: Identifier of a built-in backend-owned question pack
         questions:
           type: array
+          description: Custom question pairs supplied by the room host
           minItems: 1
           items:
             $ref: "#/components/schemas/Question"
@@ -181,6 +199,29 @@ components:
           type: string
           minLength: 1
           maxLength: 500
+    QuestionPackMetadata:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, question_count]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        question_count:
+          type: integer
+          minimum: 1
+    QuestionPackCatalog:
+      type: object
+      additionalProperties: false
+      required: [packs]
+      properties:
+        packs:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionPackMetadata"
     Credentials:
       type: object
       required: [room_id, player_id, token]

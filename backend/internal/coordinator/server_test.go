@@ -59,3 +59,28 @@ func TestCreateAndResolveRoom(t *testing.T) {
 		t.Fatalf("resolved assignment = %+v", entry)
 	}
 }
+
+func TestQuestionPacks(t *testing.T) {
+	coordinator, err := New([]string{"http://game-server.test"}, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/v1/question-packs", nil)
+	recorder := httptest.NewRecorder()
+	coordinator.Handler().ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	var response struct {
+		Packs []struct {
+			ID            string `json:"id"`
+			QuestionCount int    `json:"question_count"`
+		} `json:"packs"`
+	}
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(response.Packs) == 0 || response.Packs[0].ID == "" || response.Packs[0].QuestionCount == 0 {
+		t.Fatalf("question packs = %+v", response.Packs)
+	}
+}

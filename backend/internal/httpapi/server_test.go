@@ -66,10 +66,10 @@ type testSession struct {
 func createRoom(t *testing.T, baseURL string) testSession {
 	t.Helper()
 	body := `{
-		"name":"Friday Game","password":"secret","host_name":"Host",
-		"settings":{"player_limit":6,"answer_seconds":30,"discussion_seconds":30,"voting_seconds":30,"rounds":1},
-		"questions":[{"real":"Best snack?","fake":"Worst snack?"}]
-	}`
+			"name":"Friday Game","password":"secret","host_name":"Host",
+			"settings":{"player_limit":6,"answer_seconds":30,"discussion_seconds":30,"voting_seconds":30,"rounds":1},
+			"question_pack":"classic"
+		}`
 	response, err := http.Post(baseURL+"/v1/rooms", "application/json", strings.NewReader(body))
 	if err != nil {
 		t.Fatalf("POST room: %v", err)
@@ -83,6 +83,48 @@ func createRoom(t *testing.T, baseURL string) testSession {
 		t.Fatalf("decode room response: %v", err)
 	}
 	return session
+}
+
+func TestQuestionPacksAndInvalidSelection(t *testing.T) {
+	manager := game.NewManager(nil, nil)
+	t.Cleanup(manager.Close)
+	server := httptest.NewServer(New(manager, nil, nil).Handler())
+	t.Cleanup(server.Close)
+
+	response, err := http.Get(server.URL + "/v1/question-packs")
+	if err != nil {
+		t.Fatalf("GET question packs: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("GET question packs status = %d", response.StatusCode)
+	}
+	var catalog struct {
+		Packs []struct {
+			ID            string `json:"id"`
+			QuestionCount int    `json:"question_count"`
+		} `json:"packs"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&catalog); err != nil {
+		t.Fatalf("decode question packs: %v", err)
+	}
+	if len(catalog.Packs) == 0 || catalog.Packs[0].ID == "" || catalog.Packs[0].QuestionCount == 0 {
+		t.Fatalf("question pack catalog = %+v", catalog)
+	}
+
+	invalidBody := `{
+		"name":"Invalid Pack","password":"","host_name":"Host",
+		"settings":{"player_limit":6,"answer_seconds":30,"discussion_seconds":30,"voting_seconds":30,"rounds":1},
+		"question_pack":"missing"
+	}`
+	invalid, err := http.Post(server.URL+"/v1/rooms", "application/json", strings.NewReader(invalidBody))
+	if err != nil {
+		t.Fatalf("POST invalid pack: %v", err)
+	}
+	defer invalid.Body.Close()
+	if invalid.StatusCode != http.StatusBadRequest {
+		t.Fatalf("POST invalid pack status = %d, want %d", invalid.StatusCode, http.StatusBadRequest)
+	}
 }
 
 func joinRoom(t *testing.T, baseURL, roomID, displayName string) testSession {

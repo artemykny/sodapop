@@ -13,6 +13,7 @@ import (
 
 	"github.com/ak/skewa/backend/internal/game"
 	"github.com/ak/skewa/backend/internal/middleware"
+	"github.com/ak/skewa/backend/internal/questionpacks"
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 )
@@ -41,6 +42,7 @@ func New(manager *game.Manager, logger *slog.Logger, originPatterns []string) *S
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
+	mux.HandleFunc("GET /v1/question-packs", s.questionPacks)
 	mux.HandleFunc("POST /v1/rooms", s.createRoom)
 	mux.HandleFunc("GET /v1/rooms/{roomID}", s.getRoom)
 	mux.HandleFunc("POST /v1/rooms/{roomID}/players", s.joinRoom)
@@ -49,12 +51,13 @@ func (s *Server) Handler() http.Handler {
 }
 
 type createRoomRequest struct {
-	RoomID    string          `json:"room_id,omitempty"`
-	Name      string          `json:"name"`
-	Password  string          `json:"password"`
-	HostName  string          `json:"host_name"`
-	Settings  game.Settings   `json:"settings"`
-	Questions []game.Question `json:"questions"`
+	RoomID       string          `json:"room_id,omitempty"`
+	Name         string          `json:"name"`
+	Password     string          `json:"password"`
+	HostName     string          `json:"host_name"`
+	Settings     game.Settings   `json:"settings"`
+	QuestionPack string          `json:"question_pack,omitempty"`
+	Questions    []game.Question `json:"questions,omitempty"`
 }
 
 type joinRoomRequest struct {
@@ -72,15 +75,24 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+func (s *Server) questionPacks(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"packs": questionpacks.List()})
+}
+
 func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 	var request createRoomRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeProblem(w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
+	questions, err := roomQuestions(request.QuestionPack, request.Questions)
+	if err != nil {
+		writeProblem(w, http.StatusBadRequest, "invalid_question_source", err.Error())
+		return
+	}
 	room, credentials, err := s.manager.Create(game.CreateRoomParams{
 		ID: request.RoomID, Name: request.Name, Password: request.Password,
-		HostName: request.HostName, Settings: request.Settings, Questions: request.Questions,
+		HostName: request.HostName, Settings: request.Settings, Questions: questions,
 	})
 	if err != nil {
 		writeGameError(w, err)
@@ -96,6 +108,23 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 		WebSocketPath: fmt.Sprintf("/v1/rooms/%s/ws", credentials.RoomID),
 		State:         state,
 	})
+}
+
+func roomQuestions(packID string, custom []game.Question) ([]game.Question, error) {
+	if packID != "" && len(custom) > 0 {
+		return nil, errors.New("choose either question_pack or custom questions")
+	}
+	if packID != "" {
+		pack, ok := questionpacks.Get(packID)
+		if !ok {
+			return nil, fmt.Errorf("question pack %q was not found", packID)
+		}
+		return pack.Questions, nil
+	}
+	if len(custom) == 0 {
+		return nil, errors.New("question_pack or custom questions are required")
+	}
+	return custom, nil
 }
 
 func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {

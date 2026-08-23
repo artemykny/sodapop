@@ -145,7 +145,7 @@ components:
           const: ok
     Assignment:
       type: object
-      required: [room_id, room_name, game_server_url]
+      required: [room_id, room_name, game_server_url, protected]
       properties:
         room_id:
           type: string
@@ -154,6 +154,8 @@ components:
         game_server_url:
           type: string
           format: uri
+        protected:
+          type: boolean
     RoomSearchResults:
       type: object
       additionalProperties: false
@@ -167,18 +169,18 @@ components:
     RoomSuggestion:
       type: object
       additionalProperties: false
-      required: [name, game_id, game_name]
+      required: [name, game_id, game_name, protected]
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 60
-        game_ids:
-          type: array
-          items:
-            type: string
+        game_id:
+          type: string
         game_name:
           type: string
+        protected:
+          type: boolean
     AdminOverview:
       type: object
       additionalProperties: false

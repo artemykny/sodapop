@@ -379,7 +379,7 @@ components:
     RoomSuggestion:
       type: object
       additionalProperties: false
-      required: [name, game_id, game_name]
+      required: [name, game_id, game_name, protected]
       properties:
         name:
           type: string
@@ -389,6 +389,8 @@ components:
           const: oddoneout
         game_name:
           const: Odd One Out
+        protected:
+          type: boolean
     Player:
       type: object
       required: [id, display_name, is_host, connected, score]

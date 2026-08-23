@@ -29,7 +29,7 @@ func TestCreateAndResolveRoom(t *testing.T) {
 	server := httptest.NewServer(coordinator.Handler())
 	t.Cleanup(server.Close)
 
-	response, err := http.Post(server.URL+"/v1/rooms", "application/json", strings.NewReader(`{"name":"Friday Game"}`))
+	response, err := http.Post(server.URL+"/v1/rooms", "application/json", strings.NewReader(`{"name":"Friday Game","password":"secret"}`))
 	if err != nil {
 		t.Fatalf("POST room: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestCreateAndResolveRoom(t *testing.T) {
 	if err := json.NewDecoder(resolved.Body).Decode(&entry); err != nil {
 		t.Fatalf("decode resolve response: %v", err)
 	}
-	if entry.RoomID != "room_123" || entry.GameServerURL != gameServer.URL {
+	if entry.RoomID != "room_123" || entry.GameServerURL != gameServer.URL || !entry.Protected {
 		t.Fatalf("resolved assignment = %+v", entry)
 	}
 }
@@ -152,7 +152,7 @@ func TestRoomSearchAggregatesAndRanksMultipleGames(t *testing.T) {
 	}
 	oddOneOut := gameServer([]roomSuggestion{
 		{Name: "Our Friday Club", GameID: "oddoneout", GameName: "Odd One Out"},
-		{Name: "Friday Friends", GameID: "oddoneout", GameName: "Odd One Out"},
+		{Name: "Friday Friends", GameID: "oddoneout", GameName: "Odd One Out", Protected: true},
 	})
 	t.Cleanup(oddOneOut.Close)
 	trivia := gameServer([]roomSuggestion{
@@ -193,6 +193,9 @@ func TestRoomSearchAggregatesAndRanksMultipleGames(t *testing.T) {
 		if payload.Rooms[i].Name != name {
 			t.Errorf("rooms[%d] = %q, want %q", i, payload.Rooms[i].Name, name)
 		}
+	}
+	if !payload.Rooms[0].Protected {
+		t.Errorf("Friday Friends protected = false, want true")
 	}
 }
 

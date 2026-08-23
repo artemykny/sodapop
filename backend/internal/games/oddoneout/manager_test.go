@@ -63,4 +63,7 @@ func TestSearchJoinableRanksPrefixesAndExcludesUnavailableRooms(t *testing.T) {
 	if len(matches) != 2 || matches[0].Name != "Friday Friends" || matches[1].Name != "Our Friday Club" {
 		t.Fatalf("matches = %+v", matches)
 	}
+	if !matches[0].Protected || !matches[1].Protected {
+		t.Fatalf("protected metadata missing: %+v", matches)
+	}
 }

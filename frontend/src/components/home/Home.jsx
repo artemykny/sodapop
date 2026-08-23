@@ -36,8 +36,10 @@ export function Home({ onSession }) {
     setError("");
     try {
       onSession(await action());
+      return true;
     } catch (err) {
       setError(err.message);
+      return false;
     } finally {
       setBusy(false);
     }

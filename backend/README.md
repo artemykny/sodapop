@@ -19,6 +19,10 @@ the backend. Room creation accepts either a backend `question_pack` identifier
 or custom `questions` as write-only input. Question pairs are never returned in
 catalog or room-state responses.
 
+Public room search and coordinator assignments expose only whether a room is
+protected. Password values remain write-only and are never returned by backend
+discovery APIs.
+
 The read-only admin dashboard is served by the frontend at `/admin`. The
 coordinator authenticates the request and concurrently aggregates self-described
 statistics from every configured game server. Each instance advertises a list of

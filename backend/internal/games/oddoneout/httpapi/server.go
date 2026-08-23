@@ -61,9 +61,10 @@ func (s *Server) Handler() http.Handler {
 }
 
 type roomSuggestion struct {
-	Name     string `json:"name"`
-	GameID   string `json:"game_id"`
-	GameName string `json:"game_name"`
+	Name      string `json:"name"`
+	GameID    string `json:"game_id"`
+	GameName  string `json:"game_name"`
+	Protected bool   `json:"protected"`
 }
 
 func (s *Server) searchRooms(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +80,9 @@ func (s *Server) searchRooms(w http.ResponseWriter, r *http.Request) {
 	matches := s.manager.SearchJoinable(query, maxRoomSuggestions)
 	rooms := make([]roomSuggestion, 0, len(matches))
 	for _, room := range matches {
-		rooms = append(rooms, roomSuggestion{Name: room.Name, GameID: "oddoneout", GameName: "Odd One Out"})
+		rooms = append(rooms, roomSuggestion{
+			Name: room.Name, GameID: "oddoneout", GameName: "Odd One Out", Protected: room.Protected,
+		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"rooms": rooms})
 }

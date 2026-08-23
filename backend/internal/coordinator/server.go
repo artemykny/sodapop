@@ -28,6 +28,7 @@ type assignment struct {
 	RoomID        string `json:"room_id"`
 	RoomName      string `json:"room_name"`
 	GameServerURL string `json:"game_server_url"`
+	Protected     bool   `json:"protected"`
 }
 
 type Server struct {
@@ -84,9 +85,10 @@ func (s *Server) Handler() http.Handler {
 }
 
 type roomSuggestion struct {
-	Name     string `json:"name"`
-	GameID   string `json:"game_id"`
-	GameName string `json:"game_name"`
+	Name      string `json:"name"`
+	GameID    string `json:"game_id"`
+	GameName  string `json:"game_name"`
+	Protected bool   `json:"protected"`
 }
 
 type roomSearchResult struct {
@@ -394,7 +396,8 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var request struct {
-		Name string `json:"name"`
+		Name     string `json:"name"`
+		Password string `json:"password"`
 	}
 	if err := json.Unmarshal(body, &request); err != nil || strings.TrimSpace(request.Name) == "" {
 		writeProblem(w, http.StatusBadRequest, "invalid_request", "room name is required")
@@ -448,7 +451,10 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusBadGateway, "invalid_game_server_response", "game server omitted the room id")
 		return
 	}
-	entry := assignment{RoomID: created.RoomID, RoomName: strings.TrimSpace(request.Name), GameServerURL: serverURL}
+	entry := assignment{
+		RoomID: created.RoomID, RoomName: strings.TrimSpace(request.Name), GameServerURL: serverURL,
+		Protected: request.Password != "",
+	}
 	s.mu.Lock()
 	s.byID[entry.RoomID] = entry
 	s.byName[nameKey] = entry.RoomID

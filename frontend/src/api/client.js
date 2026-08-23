@@ -37,33 +37,39 @@ export async function searchRooms(query) {
   return result.rooms || [];
 }
 
+export function resolveRoom({ roomName, roomId }) {
+  return roomId
+    ? request(`${coordinatorUrl}/v1/rooms/${encodeURIComponent(roomId)}`)
+    : request(`${coordinatorUrl}/v1/rooms?name=${encodeURIComponent(roomName)}`);
+}
+
 export async function createRoom(payload) {
   const session = await request(`${coordinatorUrl}/v1/rooms`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  return normalizeSession(session, session.game_server_url);
+  return normalizeSession(session, session.game_server_url, payload.password);
 }
 
-export async function joinRoom({ roomName, roomId, displayName, password }) {
-  const assignment = roomId
-    ? await request(`${coordinatorUrl}/v1/rooms/${encodeURIComponent(roomId)}`)
-    : await request(`${coordinatorUrl}/v1/rooms?name=${encodeURIComponent(roomName)}`);
+export async function joinRoom({ assignment, roomName, roomId, displayName, password }) {
+  assignment ||= await resolveRoom({ roomName, roomId });
   const server = assignment.game_server_url.replace(/\/$/, "");
+  const roomPassword = assignment.protected ? password : "";
   const session = await request(`${server}/v1/rooms/${encodeURIComponent(assignment.room_id)}/players`, {
     method: "POST",
-    body: JSON.stringify({ display_name: displayName, password }),
+    body: JSON.stringify({ display_name: displayName, password: roomPassword }),
   });
-  return normalizeSession(session, server);
+  return normalizeSession(session, server, roomPassword);
 }
 
-function normalizeSession(session, gameServerUrl) {
+function normalizeSession(session, gameServerUrl, invitePassword) {
   return {
     roomId: session.room_id,
     playerId: session.player_id,
     token: session.token,
     websocketPath: session.websocket_path,
     gameServerUrl: gameServerUrl.replace(/\/$/, ""),
+    ...(invitePassword ? { invitePassword } : {}),
   };
 }
 

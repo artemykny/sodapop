@@ -7,8 +7,9 @@ test("shares and remembers the player name across room forms", async ({ page }) 
   await page.getByLabel("Your name").fill("Casey");
 
   await page.getByRole("tab", { name: "Join a room" }).click();
-  await expect(page.getByLabel("Your display name")).toHaveValue("Casey");
-  await page.getByLabel("Your display name").fill("Jordan");
+  await page.getByRole("tab", { name: "Create a room" }).click();
+  await expect(page.getByLabel("Your name")).toHaveValue("Casey");
+  await page.getByLabel("Your name").fill("Jordan");
 
   await page.reload();
   await expect(page.getByLabel("Your name")).toHaveValue("Jordan");
@@ -77,11 +78,13 @@ test("room name autocomplete finds joinable rooms after a partial match", async 
     await guest.goto("/");
     await guest.getByRole("tab", { name: "Join a room" }).click();
     await guest.getByLabel("Room name").fill("Auto");
-    const suggestion = guest.locator("#joinable-room-suggestions option").filter({ hasText: "Odd One Out" });
-    await expect(suggestion).toHaveAttribute("value", roomName);
+    const suggestion = guest.getByRole("option").filter({ hasText: roomName });
+    await expect(suggestion).toContainText("Open");
 
-    await guest.getByLabel("Room name").fill(roomName);
+    await suggestion.click();
+    await guest.getByRole("button", { name: "Continue", exact: true }).click();
     await guest.getByLabel("Your display name").fill("Autocomplete Guest");
+    await expect(guest.getByLabel("Password")).toHaveCount(0);
     await guest.getByRole("button", { name: "Join room" }).click();
     await expect(guest.getByRole("heading", { name: "The room is open" })).toBeVisible();
   } finally {
@@ -92,6 +95,9 @@ test("room name autocomplete finds joinable rooms after a partial match", async 
 test("accepts custom questions as write-only room input", async ({ page }) => {
   const roomName = uniqueRoom("Custom pack");
   await page.goto("/");
+  await page.getByLabel("Room name").fill(roomName);
+  await page.getByLabel("Your name").fill("Uploader");
+  await page.getByRole("button", { name: "Continue to game" }).click();
   await expect(page.getByRole("button", { name: "Classic mix" })).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({
     name: "custom-questions.json",
@@ -101,9 +107,8 @@ test("accepts custom questions as write-only room input", async ({ page }) => {
     ])),
   });
   await expect(page.getByRole("button", { name: /1 custom pairs/ })).toBeVisible();
-  await page.getByLabel("Room name").fill(roomName);
-  await page.getByLabel("Your name").fill("Uploader");
   await page.getByLabel("Rounds").fill("1");
+  await page.getByRole("button", { name: "Continue to access" }).click();
   await page.getByRole("button", { name: "Create room" }).click();
   await expect(page.getByRole("heading", { name: "The room is open" })).toBeVisible();
 
@@ -112,7 +117,7 @@ test("accepts custom questions as write-only room input", async ({ page }) => {
   expect(JSON.stringify(session.state)).not.toContain("Custom fake question?");
 });
 
-test("invite link pre-fills the room and rejects a wrong password", async ({ browser, page }, testInfo) => {
+test("protected invites include access while manual joins request a password", async ({ browser, page }, testInfo) => {
   const roomName = uniqueRoom("Invite");
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await createRoom(page, { roomName, password: "correct horse" });
@@ -120,27 +125,46 @@ test("invite link pre-fills the room and rejects a wrong password", async ({ bro
   const invite = await page.evaluate(() => navigator.clipboard.readText());
   expect(invite).toContain("roomId=");
   expect(invite).not.toContain("server=");
+  expect(new URL(invite).searchParams.get("password")).toBe("correct horse");
 
   const tamperedInvite = new URL(invite);
   tamperedInvite.searchParams.set("server", "http://127.0.0.1:1");
 
-  const guestContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
-  const guest = await guestContext.newPage();
+  const invitedContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
+  const invitedGuest = await invitedContext.newPage();
   try {
-    await guest.goto(tamperedInvite.toString());
-    await expect(guest.getByRole("tab", { name: "Join a room" })).toHaveAttribute("aria-selected", "true");
-    await expect(guest.getByLabel("Room name")).toHaveValue(roomName);
-    await guest.getByLabel("Your display name").fill("Guest");
-    await guest.getByLabel("Password").fill("wrong password");
-    await guest.getByRole("button", { name: "Join room" }).click();
-    await expect(guest.getByRole("alert")).toContainText("invalid room password");
-
-    await guest.getByLabel("Password").fill("correct horse");
-    await guest.getByRole("button", { name: "Join room" }).click();
-    await expect(guest.getByRole("heading", { name: "The room is open" })).toBeVisible();
-    await expect(page.getByText("2 / 8 players", { exact: true })).toBeVisible();
+    await invitedGuest.goto(tamperedInvite.toString());
+    await expect(invitedGuest.getByRole("tab", { name: "Join a room" })).toHaveAttribute("aria-selected", "true");
+    await expect(invitedGuest.getByLabel("Room name")).toHaveValue(roomName);
+    await invitedGuest.getByRole("button", { name: "Continue", exact: true }).click();
+    await invitedGuest.getByLabel("Your display name").fill("Invited Guest");
+    await expect(invitedGuest.getByText("Access included")).toBeVisible();
+    await expect(invitedGuest.getByLabel("Password")).toHaveCount(0);
+    await invitedGuest.getByRole("button", { name: "Join room" }).click();
+    await expect(invitedGuest.getByRole("heading", { name: "The room is open" })).toBeVisible();
   } finally {
-    await guestContext.close();
+    await invitedContext.close();
+  }
+
+  const manualContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
+  const manualGuest = await manualContext.newPage();
+  try {
+    await manualGuest.goto("/");
+    await manualGuest.getByRole("tab", { name: "Join a room" }).click();
+    await manualGuest.getByLabel("Room name").fill(roomName);
+    await manualGuest.getByRole("button", { name: "Continue", exact: true }).click();
+    await manualGuest.getByLabel("Your display name").fill("Manual Guest");
+    await expect(manualGuest.getByLabel("Password")).toHaveCount(0);
+    await manualGuest.getByRole("button", { name: "Continue to password" }).click();
+    await manualGuest.getByLabel("Password").fill("wrong password");
+    await manualGuest.getByRole("button", { name: "Join room" }).click();
+    await expect(manualGuest.getByRole("alert")).toContainText("invalid room password");
+    await manualGuest.getByLabel("Password").fill("correct horse");
+    await manualGuest.getByRole("button", { name: "Join room" }).click();
+    await expect(manualGuest.getByRole("heading", { name: "The room is open" })).toBeVisible();
+    await expect(page.getByText("3 / 8 players", { exact: true })).toBeVisible();
+  } finally {
+    await manualContext.close();
   }
 });
 

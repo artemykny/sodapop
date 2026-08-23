@@ -245,6 +245,9 @@ func TestRoomSearchReturnsOnlyPublicJoinableMetadata(t *testing.T) {
 	if len(payload.Rooms) != 1 || payload.Rooms[0].Name != "Friday Game" || payload.Rooms[0].GameID != "oddoneout" {
 		t.Fatalf("rooms = %+v", payload.Rooms)
 	}
+	if !payload.Rooms[0].Protected {
+		t.Fatalf("protected = false, want true")
+	}
 	for _, forbidden := range []string{"room_id", "password", "question", "player"} {
 		if bytes.Contains(bytes.ToLower(body), []byte(forbidden)) {
 			t.Fatalf("search leaked %q: %s", forbidden, body)

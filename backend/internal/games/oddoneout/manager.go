@@ -204,7 +204,8 @@ func (m *Manager) Stats() Stats {
 }
 
 type JoinableRoom struct {
-	Name string
+	Name      string
+	Protected bool
 }
 
 func (m *Manager) SearchJoinable(query string, limit int) []JoinableRoom {
@@ -223,10 +224,11 @@ func (m *Manager) SearchJoinable(query string, limit int) []JoinableRoom {
 	for _, room := range rooms {
 		room.mu.RLock()
 		name := room.Name
+		protected := len(room.PasswordHash) > 0
 		joinable := room.Phase == PhaseLobby && len(room.Players) < room.Settings.PlayerLimit
 		room.mu.RUnlock()
 		if joinable && strings.Contains(strings.ToLower(name), query) {
-			matches = append(matches, JoinableRoom{Name: name})
+			matches = append(matches, JoinableRoom{Name: name, Protected: protected})
 		}
 	}
 	sort.Slice(matches, func(i, j int) bool {

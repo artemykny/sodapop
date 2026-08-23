@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { adminPassword } from "./constants.js";
 import { createRoom, joinRoom, suspect, uniqueRoom } from "./helpers.js";
 
 test("loads backend-owned pack metadata and creates a room", async ({ page, request }) => {
@@ -15,6 +16,47 @@ test("loads backend-owned pack metadata and creates a room", async ({ page, requ
   await createRoom(page, { roomName });
   await expect(page.getByText(roomName, { exact: true }).first()).toBeVisible();
   await expect(page.getByText("1 rounds", { exact: true }).first()).toBeVisible();
+});
+
+test("admin dashboard rejects a wrong password and aggregates game information", async ({ page }) => {
+  await page.goto("/admin");
+  await expect(page.getByRole("heading", { name: "Admin console" })).toBeVisible();
+
+  await page.getByLabel("Admin password").fill("wrong-password");
+  await page.getByRole("button", { name: "Open dashboard" }).click();
+  await expect(page.getByRole("alert")).toContainText("admin password is invalid");
+
+  await page.getByLabel("Admin password").fill(adminPassword);
+  await page.getByRole("button", { name: "Open dashboard" }).click();
+  await expect(page.getByRole("heading", { name: "Operations overview" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Odd One Out" })).toBeVisible();
+  await expect(page.getByText("Classic mix", { exact: true })).toBeVisible();
+  await expect(page.getByText("After hours", { exact: true })).toBeVisible();
+  await expect(page.getByText("What is the best pizza topping?", { exact: true })).toBeVisible();
+  await expect(page.getByText("What is the worst pizza topping?", { exact: true })).toBeVisible();
+  await expect(page.getByText("oddoneout", { exact: true }).last()).toBeVisible();
+});
+
+test("room name autocomplete finds joinable rooms after a partial match", async ({ browser, page }, testInfo) => {
+  const roomName = uniqueRoom("Autocomplete");
+  await createRoom(page, { roomName });
+
+  const guestContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
+  const guest = await guestContext.newPage();
+  try {
+    await guest.goto("/");
+    await guest.getByRole("tab", { name: "Join a room" }).click();
+    await guest.getByLabel("Room name").fill("Auto");
+    const suggestion = guest.locator("#joinable-room-suggestions option").filter({ hasText: "Odd One Out" });
+    await expect(suggestion).toHaveAttribute("value", roomName);
+
+    await guest.getByLabel("Room name").fill(roomName);
+    await guest.getByLabel("Your display name").fill("Autocomplete Guest");
+    await guest.getByRole("button", { name: "Join room" }).click();
+    await expect(guest.getByRole("heading", { name: "The room is open" })).toBeVisible();
+  } finally {
+    await guestContext.close();
+  }
 });
 
 test("accepts custom questions as write-only room input", async ({ page }) => {

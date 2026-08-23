@@ -26,6 +26,17 @@ export async function getQuestionPacks() {
   return catalog.packs || [];
 }
 
+export function getAdminOverview(password) {
+  return request(`${coordinatorUrl}/v1/admin/overview`, {
+    headers: { Authorization: `Bearer ${password}` },
+  });
+}
+
+export async function searchRooms(query) {
+  const result = await request(`${coordinatorUrl}/v1/rooms/search?q=${encodeURIComponent(query)}`);
+  return result.rooms || [];
+}
+
 export async function createRoom(payload) {
   const session = await request(`${coordinatorUrl}/v1/rooms`, {
     method: "POST",

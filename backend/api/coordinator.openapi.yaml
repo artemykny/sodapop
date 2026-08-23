@@ -26,6 +26,23 @@ paths:
             application/json:
               schema:
                 $ref: "./games/oddoneout/openapi.yaml#/components/schemas/QuestionPackCatalog"
+  /v1/admin/overview:
+    get:
+      operationId: getAdminOverview
+      summary: Aggregate operational metadata from every configured game server
+      security:
+        - adminBearerAuth: []
+      responses:
+        "200":
+          description: Multi-game operational overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOverview"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "503":
+          $ref: "#/components/responses/Problem"
   /v1/rooms:
     post:
       operationId: createRoom
@@ -71,6 +88,27 @@ paths:
                 $ref: "#/components/schemas/Assignment"
         "404":
           $ref: "#/components/responses/Problem"
+  /v1/rooms/search:
+    get:
+      operationId: searchJoinableRooms
+      summary: Search joinable rooms across all configured game servers
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 60
+      responses:
+        "200":
+          description: Up to ten joinable rooms, with prefix matches first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomSearchResults"
+        "400":
+          $ref: "#/components/responses/Problem"
   /v1/rooms/{roomId}:
     get:
       operationId: resolveRoomById
@@ -86,6 +124,11 @@ paths:
         "404":
           $ref: "#/components/responses/Problem"
 components:
+  securitySchemes:
+    adminBearerAuth:
+      type: http
+      scheme: bearer
+      description: Long administrator password configured through ADMIN_PASSWORD
   parameters:
     RoomId:
       name: roomId
@@ -111,6 +154,139 @@ components:
         game_server_url:
           type: string
           format: uri
+    RoomSearchResults:
+      type: object
+      additionalProperties: false
+      required: [rooms]
+      properties:
+        rooms:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/RoomSuggestion"
+    RoomSuggestion:
+      type: object
+      additionalProperties: false
+      required: [name, game_id, game_name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        game_id:
+          type: string
+        game_name:
+          type: string
+    AdminOverview:
+      type: object
+      additionalProperties: false
+      required: [generated_at, totals, games, instances]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        totals:
+          $ref: "#/components/schemas/AdminTotals"
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminGameOverview"
+        instances:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminInstance"
+    AdminTotals:
+      type: object
+      additionalProperties: false
+      required: [game_types, server_instances, unavailable_servers, total_rooms, active_rooms, connected_players]
+      properties:
+        game_types: { type: integer, minimum: 0 }
+        server_instances: { type: integer, minimum: 0 }
+        unavailable_servers: { type: integer, minimum: 0 }
+        total_rooms: { type: integer, minimum: 0 }
+        active_rooms: { type: integer, minimum: 0 }
+        connected_players: { type: integer, minimum: 0 }
+    AdminGameOverview:
+      type: object
+      additionalProperties: false
+      required: [id, name, server_instances, rooms, players, question_packs]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        server_instances: { type: integer, minimum: 1 }
+        rooms:
+          $ref: "#/components/schemas/AdminRooms"
+        players:
+          $ref: "#/components/schemas/AdminPlayers"
+        question_packs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminQuestionPack"
+    AdminQuestionPack:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, question_count, items]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        question_count: { type: integer, minimum: 1 }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AdminPackItem"
+    AdminPackItem:
+      type: object
+      additionalProperties: false
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AdminContentField"
+    AdminContentField:
+      type: object
+      additionalProperties: false
+      required: [label, value]
+      properties:
+        label: { type: string, minLength: 1 }
+        value: { type: string, minLength: 1 }
+    AdminRooms:
+      type: object
+      additionalProperties: false
+      required: [total, active, finished, by_phase]
+      properties:
+        total: { type: integer, minimum: 0 }
+        active: { type: integer, minimum: 0 }
+        finished: { type: integer, minimum: 0 }
+        by_phase:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+    AdminPlayers:
+      type: object
+      additionalProperties: false
+      required: [total, connected]
+      properties:
+        total: { type: integer, minimum: 0 }
+        connected: { type: integer, minimum: 0 }
+    AdminInstance:
+      type: object
+      additionalProperties: false
+      required: [url, available]
+      properties:
+        url:
+          type: string
+          format: uri
+        game_id:
+          type: string
+        available:
+          type: boolean
+        error:
+          type: string
     Problem:
       type: object
       required: [type, title, status, code, detail]

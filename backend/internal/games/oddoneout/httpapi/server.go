@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ak/skewa/backend/internal/adminapi"
 	game "github.com/ak/skewa/backend/internal/games/oddoneout"
 	"github.com/ak/skewa/backend/internal/games/oddoneout/questionpacks"
 	"github.com/ak/skewa/backend/internal/middleware"
@@ -21,24 +22,27 @@ import (
 )
 
 const maxRequestBytes = 1 << 20
+const maxRoomSuggestions = 10
 
 type Server struct {
 	manager        *game.Manager
 	logger         *slog.Logger
 	allowedOrigins []string
 	originPatterns []string
+	adminAuth      adminapi.Auth
 
 	connectionsMu sync.Mutex
 	connections   map[string]int
 }
 
-func New(manager *game.Manager, logger *slog.Logger, originPatterns []string) *Server {
+func New(manager *game.Manager, logger *slog.Logger, originPatterns []string, adminPassword string) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	return &Server{
 		manager: manager, logger: logger, allowedOrigins: slices.Clone(originPatterns),
 		originPatterns: middleware.OriginHostPatterns(originPatterns),
+		adminAuth:      adminapi.NewAuth(adminPassword),
 		connections:    make(map[string]int),
 	}
 }
@@ -47,11 +51,72 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /v1/question-packs", s.questionPacks)
+	mux.HandleFunc("GET /v1/rooms/search", s.searchRooms)
+	mux.HandleFunc("GET /v1/admin/stats", s.adminStats)
 	mux.HandleFunc("POST /v1/rooms", s.createRoom)
 	mux.HandleFunc("GET /v1/rooms/{roomID}", s.getRoom)
 	mux.HandleFunc("POST /v1/rooms/{roomID}/players", s.joinRoom)
 	mux.HandleFunc("GET /v1/rooms/{roomID}/ws", s.roomWebSocket)
 	return s.recoverPanic(s.logRequest(middleware.CORS(s.allowedOrigins, mux)))
+}
+
+type roomSuggestion struct {
+	Name     string `json:"name"`
+	GameID   string `json:"game_id"`
+	GameName string `json:"game_name"`
+}
+
+func (s *Server) searchRooms(w http.ResponseWriter, r *http.Request) {
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	if len([]rune(query)) < 2 {
+		writeJSON(w, http.StatusOK, map[string]any{"rooms": []roomSuggestion{}})
+		return
+	}
+	if len([]rune(query)) > 60 {
+		writeProblem(w, http.StatusBadRequest, "invalid_request", "room search must not exceed 60 characters")
+		return
+	}
+	matches := s.manager.SearchJoinable(query, maxRoomSuggestions)
+	rooms := make([]roomSuggestion, 0, len(matches))
+	for _, room := range matches {
+		rooms = append(rooms, roomSuggestion{Name: room.Name, GameID: "oddoneout", GameName: "Odd One Out"})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"rooms": rooms})
+}
+
+func (s *Server) adminStats(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuth.Require(w, r) {
+		return
+	}
+	stats := s.manager.Stats()
+	byPhase := make(map[string]int, len(stats.RoomsByPhase))
+	for phase, count := range stats.RoomsByPhase {
+		byPhase[string(phase)] = count
+	}
+	packs := questionpacks.All()
+	packStats := make([]adminapi.QuestionPack, 0, len(packs))
+	for _, pack := range packs {
+		items := make([]adminapi.PackItem, 0, len(pack.Questions))
+		for _, question := range pack.Questions {
+			items = append(items, adminapi.PackItem{Fields: []adminapi.ContentField{
+				{Label: "Question", Value: question.Real},
+				{Label: "Odd question", Value: question.Fake},
+			}})
+		}
+		packStats = append(packStats, adminapi.QuestionPack{
+			ID: pack.ID, Name: pack.Name, Description: pack.Description,
+			QuestionCount: len(pack.Questions), Items: items,
+		})
+	}
+	writeJSON(w, http.StatusOK, adminapi.GameServerStats{
+		Game: adminapi.Game{ID: "oddoneout", Name: "Odd One Out"},
+		Rooms: adminapi.Rooms{
+			Total: stats.RoomsTotal, Active: stats.RoomsActive,
+			Finished: stats.RoomsFinished, ByPhase: byPhase,
+		},
+		Players:       adminapi.Players{Total: stats.PlayersTotal, Connected: stats.PlayersConnected},
+		QuestionPacks: packStats,
+	})
 }
 
 type createRoomRequest struct {

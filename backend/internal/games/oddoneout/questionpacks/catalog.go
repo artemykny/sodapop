@@ -79,3 +79,12 @@ func List() []Metadata {
 	}
 	return result
 }
+
+func All() []Pack {
+	result := make([]Pack, 0, len(catalogOrder))
+	for _, id := range catalogOrder {
+		pack, _ := Get(id)
+		result = append(result, pack)
+	}
+	return result
+}

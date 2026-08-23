@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/ak/skewa/backend/internal/adminapi"
 )
 
 func TestCreateAndResolveRoom(t *testing.T) {
@@ -20,7 +22,7 @@ func TestCreateAndResolveRoom(t *testing.T) {
 	}))
 	t.Cleanup(gameServer.Close)
 
-	coordinator, err := New([]string{gameServer.URL}, nil, nil, nil)
+	coordinator, err := New([]string{gameServer.URL}, nil, nil, nil, "")
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -60,6 +62,130 @@ func TestCreateAndResolveRoom(t *testing.T) {
 	}
 }
 
+func TestAdminOverviewAggregatesMultipleGamesAndUnavailableServers(t *testing.T) {
+	password := strings.Repeat("long-admin-password-", 32)
+	gameServer := func(stats adminapi.GameServerStats) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/v1/admin/stats" {
+				http.NotFound(w, r)
+				return
+			}
+			if r.Header.Get("Authorization") != "Bearer "+password {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			writeJSON(w, http.StatusOK, stats)
+		}))
+	}
+	oddOneOut := gameServer(adminapi.GameServerStats{
+		Game:    adminapi.Game{ID: "oddoneout", Name: "Odd One Out"},
+		Rooms:   adminapi.Rooms{Total: 3, Active: 2, Finished: 1, ByPhase: map[string]int{"lobby": 2, "finished": 1}},
+		Players: adminapi.Players{Total: 8, Connected: 5},
+		QuestionPacks: []adminapi.QuestionPack{{
+			ID: "classic", Name: "Classic mix", QuestionCount: 1,
+			Items: []adminapi.PackItem{{Fields: []adminapi.ContentField{{Label: "Question", Value: "A question"}}}},
+		}},
+	})
+	t.Cleanup(oddOneOut.Close)
+	trivia := gameServer(adminapi.GameServerStats{
+		Game:    adminapi.Game{ID: "trivia", Name: "Trivia"},
+		Rooms:   adminapi.Rooms{Total: 4, Active: 4, ByPhase: map[string]int{"playing": 4}},
+		Players: adminapi.Players{Total: 20, Connected: 12},
+		QuestionPacks: []adminapi.QuestionPack{{
+			ID: "general", Name: "General knowledge", QuestionCount: 1,
+			Items: []adminapi.PackItem{{Fields: []adminapi.ContentField{{Label: "Question", Value: "Trivia question"}}}},
+		}},
+	})
+	t.Cleanup(trivia.Close)
+	unavailable := httptest.NewServer(http.NotFoundHandler())
+	unavailableURL := unavailable.URL
+	unavailable.Close()
+
+	coordinator, err := New([]string{oddOneOut.URL, trivia.URL, unavailableURL}, nil, nil, nil, password)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/v1/admin/overview", nil)
+	request.Header.Set("Authorization", "Bearer "+password)
+	recorder := httptest.NewRecorder()
+	coordinator.Handler().ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	var overview adminapi.Overview
+	if err := json.NewDecoder(recorder.Body).Decode(&overview); err != nil {
+		t.Fatalf("decode overview: %v", err)
+	}
+	if overview.Totals.GameTypes != 2 || overview.Totals.ServerInstances != 3 || overview.Totals.UnavailableServers != 1 {
+		t.Fatalf("instance totals = %+v", overview.Totals)
+	}
+	if overview.Totals.TotalRooms != 7 || overview.Totals.ActiveRooms != 6 || overview.Totals.ConnectedPlayers != 17 {
+		t.Fatalf("activity totals = %+v", overview.Totals)
+	}
+	if len(overview.Games) != 2 || overview.Games[0].ID != "oddoneout" || overview.Games[1].ID != "trivia" {
+		t.Fatalf("games = %+v", overview.Games)
+	}
+	if len(overview.Instances) != 3 || overview.Instances[0].URL == "" {
+		t.Fatalf("instances = %+v", overview.Instances)
+	}
+}
+
+func TestRoomSearchAggregatesAndRanksMultipleGames(t *testing.T) {
+	gameServer := func(rooms []roomSuggestion) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/v1/rooms/search" || r.URL.Query().Get("q") != "fri" {
+				http.NotFound(w, r)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"rooms": rooms})
+		}))
+	}
+	oddOneOut := gameServer([]roomSuggestion{
+		{Name: "Our Friday Club", GameID: "oddoneout", GameName: "Odd One Out"},
+		{Name: "Friday Friends", GameID: "oddoneout", GameName: "Odd One Out"},
+	})
+	t.Cleanup(oddOneOut.Close)
+	trivia := gameServer([]roomSuggestion{
+		{Name: "Friday Trivia", GameID: "trivia", GameName: "Trivia"},
+		{Name: "Friday Friends", GameID: "oddoneout", GameName: "Odd One Out"},
+	})
+	t.Cleanup(trivia.Close)
+
+	coordinator, err := New([]string{oddOneOut.URL, trivia.URL}, nil, nil, nil, "")
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	for roomID, entry := range map[string]assignment{
+		"room_friends": {RoomID: "room_friends", RoomName: "Friday Friends", GameServerURL: oddOneOut.URL},
+		"room_club":    {RoomID: "room_club", RoomName: "Our Friday Club", GameServerURL: oddOneOut.URL},
+		"room_trivia":  {RoomID: "room_trivia", RoomName: "Friday Trivia", GameServerURL: trivia.URL},
+	} {
+		coordinator.byID[roomID] = entry
+		coordinator.byName[strings.ToLower(entry.RoomName)] = roomID
+	}
+	request := httptest.NewRequest(http.MethodGet, "/v1/rooms/search?q=fri", nil)
+	recorder := httptest.NewRecorder()
+	coordinator.Handler().ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	var payload struct {
+		Rooms []roomSuggestion `json:"rooms"`
+	}
+	if err := json.NewDecoder(recorder.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode search: %v", err)
+	}
+	want := []string{"Friday Friends", "Friday Trivia", "Our Friday Club"}
+	if len(payload.Rooms) != len(want) {
+		t.Fatalf("rooms = %+v", payload.Rooms)
+	}
+	for i, name := range want {
+		if payload.Rooms[i].Name != name {
+			t.Errorf("rooms[%d] = %q, want %q", i, payload.Rooms[i].Name, name)
+		}
+	}
+}
+
 func TestQuestionPacks(t *testing.T) {
 	gameServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet || r.URL.Path != "/v1/question-packs" {
@@ -71,7 +197,7 @@ func TestQuestionPacks(t *testing.T) {
 	}))
 	t.Cleanup(gameServer.Close)
 
-	coordinator, err := New([]string{gameServer.URL}, nil, nil, nil)
+	coordinator, err := New([]string{gameServer.URL}, nil, nil, nil, "")
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

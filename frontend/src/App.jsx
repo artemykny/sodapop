@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { AdminPage } from "./components/admin/AdminPage.jsx";
 import { Home } from "./components/home/Home.jsx";
 import { GameRoom } from "./components/room/GameRoom.jsx";
 import { useGameSocket } from "./hooks/useGameSocket.js";
@@ -14,7 +15,7 @@ function loadSession() {
   }
 }
 
-function App() {
+function GameApplication() {
   const [session, setSession] = useState(loadSession);
   const [notice, setNotice] = useState("");
   const { connection, send } = useGameSocket(session, setSession, setNotice);
@@ -50,6 +51,11 @@ function App() {
       )}
     </div>
   );
+}
+
+function App() {
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  return path === "/admin" ? <AdminPage /> : <GameApplication />;
 }
 
 export default App;

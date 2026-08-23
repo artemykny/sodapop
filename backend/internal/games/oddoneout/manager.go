@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -163,4 +164,81 @@ func (m *Manager) DebugString() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return fmt.Sprintf("rooms=%d subscribers=%d", len(m.rooms), len(m.subscribers))
+}
+
+type Stats struct {
+	RoomsTotal       int
+	RoomsActive      int
+	RoomsFinished    int
+	RoomsByPhase     map[Phase]int
+	PlayersTotal     int
+	PlayersConnected int
+}
+
+func (m *Manager) Stats() Stats {
+	m.mu.RLock()
+	rooms := make([]*Room, 0, len(m.rooms))
+	for _, room := range m.rooms {
+		rooms = append(rooms, room)
+	}
+	m.mu.RUnlock()
+
+	stats := Stats{RoomsTotal: len(rooms), RoomsByPhase: make(map[Phase]int)}
+	for _, room := range rooms {
+		room.mu.RLock()
+		stats.RoomsByPhase[room.Phase]++
+		if room.Phase == PhaseFinished {
+			stats.RoomsFinished++
+		} else {
+			stats.RoomsActive++
+		}
+		stats.PlayersTotal += len(room.Players)
+		for _, player := range room.Players {
+			if player.Connected {
+				stats.PlayersConnected++
+			}
+		}
+		room.mu.RUnlock()
+	}
+	return stats
+}
+
+type JoinableRoom struct {
+	Name string
+}
+
+func (m *Manager) SearchJoinable(query string, limit int) []JoinableRoom {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" || limit <= 0 {
+		return []JoinableRoom{}
+	}
+	m.mu.RLock()
+	rooms := make([]*Room, 0, len(m.rooms))
+	for _, room := range m.rooms {
+		rooms = append(rooms, room)
+	}
+	m.mu.RUnlock()
+
+	matches := make([]JoinableRoom, 0)
+	for _, room := range rooms {
+		room.mu.RLock()
+		name := room.Name
+		joinable := room.Phase == PhaseLobby && len(room.Players) < room.Settings.PlayerLimit
+		room.mu.RUnlock()
+		if joinable && strings.Contains(strings.ToLower(name), query) {
+			matches = append(matches, JoinableRoom{Name: name})
+		}
+	}
+	sort.Slice(matches, func(i, j int) bool {
+		iPrefix := strings.HasPrefix(strings.ToLower(matches[i].Name), query)
+		jPrefix := strings.HasPrefix(strings.ToLower(matches[j].Name), query)
+		if iPrefix != jPrefix {
+			return iPrefix
+		}
+		return strings.ToLower(matches[i].Name) < strings.ToLower(matches[j].Name)
+	})
+	if len(matches) > limit {
+		matches = matches[:limit]
+	}
+	return matches
 }

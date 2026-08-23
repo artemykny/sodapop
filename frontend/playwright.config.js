@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { adminPassword } from "./e2e/constants.js";
 
 const frontendPort = 15173;
 const coordinatorPort = 18080;
@@ -31,6 +32,7 @@ export default defineConfig({
       env: {
         PORT: String(gameServerPort),
         ALLOWED_ORIGINS: frontendUrl,
+        ADMIN_PASSWORD: adminPassword,
       },
       url: `http://127.0.0.1:${gameServerPort}/healthz`,
       reuseExistingServer: !process.env.CI,
@@ -43,6 +45,7 @@ export default defineConfig({
         PORT: String(coordinatorPort),
         GAME_SERVERS: `http://127.0.0.1:${gameServerPort}`,
         ALLOWED_ORIGINS: frontendUrl,
+        ADMIN_PASSWORD: adminPassword,
       },
       url: `http://127.0.0.1:${coordinatorPort}/healthz`,
       reuseExistingServer: !process.env.CI,

@@ -30,6 +30,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/QuestionPackCatalog"
+  /v1/admin/stats:
+    get:
+      operationId: getOddOneOutAdminStats
+      summary: Return operational metadata for coordinator aggregation
+      security:
+        - adminBearerAuth: []
+      responses:
+        "200":
+          description: Current server statistics and question-pack metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameServerStats"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "503":
+          $ref: "#/components/responses/Problem"
   /v1/rooms:
     post:
       operationId: createRoomOnGameServer
@@ -49,6 +66,27 @@ paths:
         "400":
           $ref: "#/components/responses/Problem"
         "409":
+          $ref: "#/components/responses/Problem"
+  /v1/rooms/search:
+    get:
+      operationId: searchJoinableOddOneOutRooms
+      summary: Search lobby rooms that still have player capacity
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 60
+      responses:
+        "200":
+          description: Joinable Odd One Out rooms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomSearchResults"
+        "400":
           $ref: "#/components/responses/Problem"
   /v1/rooms/{roomId}:
     get:
@@ -120,6 +158,10 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+    adminBearerAuth:
+      type: http
+      scheme: bearer
+      description: Long administrator password configured through ADMIN_PASSWORD
   parameters:
     RoomId:
       name: roomId
@@ -225,6 +267,77 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/QuestionPackMetadata"
+    GameServerStats:
+      type: object
+      additionalProperties: false
+      required: [game, rooms, players, question_packs]
+      properties:
+        game:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties:
+            id: { const: oddoneout }
+            name: { const: Odd One Out }
+        rooms:
+          $ref: "#/components/schemas/AdminRooms"
+        players:
+          $ref: "#/components/schemas/AdminPlayers"
+        question_packs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminQuestionPack"
+    AdminQuestionPack:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, question_count, items]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        question_count: { type: integer, minimum: 1 }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AdminPackItem"
+    AdminPackItem:
+      type: object
+      additionalProperties: false
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AdminContentField"
+    AdminContentField:
+      type: object
+      additionalProperties: false
+      required: [label, value]
+      properties:
+        label: { type: string, minLength: 1 }
+        value: { type: string, minLength: 1 }
+    AdminRooms:
+      type: object
+      additionalProperties: false
+      required: [total, active, finished, by_phase]
+      properties:
+        total: { type: integer, minimum: 0 }
+        active: { type: integer, minimum: 0 }
+        finished: { type: integer, minimum: 0 }
+        by_phase:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+    AdminPlayers:
+      type: object
+      additionalProperties: false
+      required: [total, connected]
+      properties:
+        total: { type: integer, minimum: 0 }
+        connected: { type: integer, minimum: 0 }
     Credentials:
       type: object
       required: [room_id, player_id, token]
@@ -243,6 +356,29 @@ components:
           properties:
             websocket_path:
               type: string
+    RoomSearchResults:
+      type: object
+      additionalProperties: false
+      required: [rooms]
+      properties:
+        rooms:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/RoomSuggestion"
+    RoomSuggestion:
+      type: object
+      additionalProperties: false
+      required: [name, game_id, game_name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+        game_id:
+          const: oddoneout
+        game_name:
+          const: Odd One Out
     Player:
       type: object
       required: [id, display_name, is_host, connected, score]

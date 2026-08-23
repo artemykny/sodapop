@@ -36,7 +36,7 @@ func main() {
 	manager := oddoneout.NewManager(snapshotStore, logger)
 	defer manager.Close()
 	origins := splitList(os.Getenv("ALLOWED_ORIGINS"))
-	handler := httpapi.New(manager, logger, origins).Handler()
+	handler := httpapi.New(manager, logger, origins, os.Getenv("ADMIN_PASSWORD")).Handler()
 	if err := appserver.Run(address("8081"), handler, logger); err != nil {
 		logger.Error("game server stopped", "error", err)
 		os.Exit(1)

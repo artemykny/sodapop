@@ -3,6 +3,10 @@
 React and Vite client for the Skewa multiplayer game application. The current
 game is Odd One Out.
 
+The join form searches authoritative game-server state after two typed
+characters and suggests only lobby rooms that still have player capacity.
+Suggestions include their game identity so the same UI can list future games.
+
 Built-in question text is owned by the backend. The client loads only question
 pack metadata from the coordinator and sends the selected `question_pack` ID
 when creating a room. Hosts may alternatively submit custom question pairs as
@@ -40,6 +44,15 @@ npm run dev
 Copy `.env.example` to `.env` to override the coordinator URL. Production
 deployments should set `VITE_COORDINATOR_URL` to the public coordinator URL at
 build time.
+
+## Admin dashboard
+
+Open `/admin` and paste the `ADMIN_PASSWORD` configured on the coordinator and
+all game servers. The password stays in browser memory only: it is not bundled,
+put in a URL, or written to local storage. The read-only dashboard aggregates
+game types, active rooms, connected players, phase counts, server health, and
+the complete readable contents of every built-in question pack across every
+configured game server. Public catalog and room APIs still expose metadata only.
 
 ## End-to-end tests
 

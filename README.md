@@ -28,6 +28,8 @@ vote to find the player who was answering a different question.
 - Coordinator service and game servers run as separate deployed services.
 - Game servers own active rooms and keep game state in memory.
 - Game servers write room snapshots to PostgreSQL.
+- A password-protected `/admin` dashboard aggregates operational metadata from
+  every game type and server instance.
 
 ## Project Structure
 

@@ -12,7 +12,9 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	gameServers := splitList(os.Getenv("GAME_SERVERS"))
-	server, err := coordinator.New(gameServers, nil, logger, splitList(os.Getenv("ALLOWED_ORIGINS")))
+	server, err := coordinator.New(
+		gameServers, nil, logger, splitList(os.Getenv("ALLOWED_ORIGINS")), os.Getenv("ADMIN_PASSWORD"),
+	)
 	if err != nil {
 		logger.Error("configure coordinator", "error", err)
 		os.Exit(1)

@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ak/skewa/backend/internal/adminapi"
 	game "github.com/ak/skewa/backend/internal/games/oddoneout"
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
@@ -20,7 +22,7 @@ import (
 func TestHTTPAndWebSocketRoomFlow(t *testing.T) {
 	manager := game.NewManager(nil, nil)
 	t.Cleanup(manager.Close)
-	server := httptest.NewServer(New(manager, nil, nil).Handler())
+	server := httptest.NewServer(New(manager, nil, nil, "").Handler())
 	t.Cleanup(server.Close)
 
 	host := createRoom(t, server.URL)
@@ -104,7 +106,7 @@ func createRoom(t *testing.T, baseURL string) testSession {
 func TestQuestionPacksAndInvalidSelection(t *testing.T) {
 	manager := game.NewManager(nil, nil)
 	t.Cleanup(manager.Close)
-	server := httptest.NewServer(New(manager, nil, nil).Handler())
+	server := httptest.NewServer(New(manager, nil, nil, "").Handler())
 	t.Cleanup(server.Close)
 
 	response, err := http.Get(server.URL + "/v1/question-packs")
@@ -146,7 +148,7 @@ func TestQuestionPacksAndInvalidSelection(t *testing.T) {
 func TestCreateRoomRejectsTrailingJSONData(t *testing.T) {
 	manager := game.NewManager(nil, nil)
 	t.Cleanup(manager.Close)
-	server := httptest.NewServer(New(manager, nil, nil).Handler())
+	server := httptest.NewServer(New(manager, nil, nil, "").Handler())
 	t.Cleanup(server.Close)
 
 	body := `{
@@ -164,6 +166,87 @@ func TestCreateRoomRejectsTrailingJSONData(t *testing.T) {
 	}
 	if _, err := manager.FindByName("Trailing Data"); !errors.Is(err, game.ErrRoomNotFound) {
 		t.Fatalf("invalid request created room: %v", err)
+	}
+}
+
+func TestAdminStatsRequireLongPassword(t *testing.T) {
+	manager := game.NewManager(nil, nil)
+	t.Cleanup(manager.Close)
+	password := strings.Repeat("admin-secret-", 40)
+	server := httptest.NewServer(New(manager, nil, nil, password).Handler())
+	t.Cleanup(server.Close)
+	createRoom(t, server.URL)
+
+	unauthorized, err := http.Get(server.URL + "/v1/admin/stats")
+	if err != nil {
+		t.Fatalf("GET unauthorized admin stats: %v", err)
+	}
+	unauthorized.Body.Close()
+	if unauthorized.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("unauthorized status = %d, want %d", unauthorized.StatusCode, http.StatusUnauthorized)
+	}
+
+	request, err := http.NewRequest(http.MethodGet, server.URL+"/v1/admin/stats", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Authorization", "Bearer "+password)
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatalf("GET admin stats: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("admin status = %d, want %d", response.StatusCode, http.StatusOK)
+	}
+	var stats adminapi.GameServerStats
+	if err := json.NewDecoder(response.Body).Decode(&stats); err != nil {
+		t.Fatalf("decode admin stats: %v", err)
+	}
+	if stats.Game.ID != "oddoneout" || stats.Rooms.Total != 1 || stats.Rooms.Active != 1 {
+		t.Fatalf("admin stats = %+v", stats)
+	}
+	if len(stats.QuestionPacks) == 0 || stats.QuestionPacks[0].QuestionCount == 0 ||
+		len(stats.QuestionPacks[0].Items) != stats.QuestionPacks[0].QuestionCount {
+		t.Fatalf("question packs = %+v", stats.QuestionPacks)
+	}
+	if got := stats.QuestionPacks[0].Items[0].Fields; len(got) != 2 || got[0].Value == "" || got[1].Value == "" {
+		t.Fatalf("question fields = %+v", got)
+	}
+}
+
+func TestRoomSearchReturnsOnlyPublicJoinableMetadata(t *testing.T) {
+	manager := game.NewManager(nil, nil)
+	t.Cleanup(manager.Close)
+	server := httptest.NewServer(New(manager, nil, nil, "").Handler())
+	t.Cleanup(server.Close)
+	createRoom(t, server.URL)
+
+	response, err := http.Get(server.URL + "/v1/rooms/search?q=fri")
+	if err != nil {
+		t.Fatalf("GET room search: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusOK)
+	}
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read search response: %v", err)
+	}
+	var payload struct {
+		Rooms []roomSuggestion `json:"rooms"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("decode search: %v", err)
+	}
+	if len(payload.Rooms) != 1 || payload.Rooms[0].Name != "Friday Game" || payload.Rooms[0].GameID != "oddoneout" {
+		t.Fatalf("rooms = %+v", payload.Rooms)
+	}
+	for _, forbidden := range []string{"room_id", "password", "question", "player"} {
+		if bytes.Contains(bytes.ToLower(body), []byte(forbidden)) {
+			t.Fatalf("search leaked %q: %s", forbidden, body)
+		}
 	}
 }
 

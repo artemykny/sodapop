@@ -2,6 +2,18 @@ import { expect, test } from "@playwright/test";
 import { adminPassword } from "./constants.js";
 import { createRoom, joinRoom, suspect, uniqueRoom } from "./helpers.js";
 
+test("shares and remembers the player name across room forms", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Your name").fill("Casey");
+
+  await page.getByRole("tab", { name: "Join a room" }).click();
+  await expect(page.getByLabel("Your display name")).toHaveValue("Casey");
+  await page.getByLabel("Your display name").fill("Jordan");
+
+  await page.reload();
+  await expect(page.getByLabel("Your name")).toHaveValue("Jordan");
+});
+
 test("loads backend-owned pack metadata and creates a room", async ({ page, request }) => {
   await page.goto("/");
   const bodyFont = await page.locator("body").evaluate((element) => getComputedStyle(element).fontFamily);

@@ -3,9 +3,20 @@ import { getQuestionPacks } from "../../api/client.js";
 import { CreateForm } from "./CreateForm.jsx";
 import { JoinForm } from "./JoinForm.jsx";
 
+const PLAYER_NAME_KEY = "sodapop-player-name-v1";
+
+function loadPlayerName() {
+  try {
+    return localStorage.getItem(PLAYER_NAME_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
 export function Home({ onSession }) {
   const invite = useMemo(() => new URLSearchParams(window.location.search), []);
   const [mode, setMode] = useState(invite.has("room") ? "join" : "create");
+  const [playerName, setPlayerName] = useState(loadPlayerName);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [packs, setPacks] = useState([]);
@@ -29,6 +40,16 @@ export function Home({ onSession }) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  function rememberPlayerName(name) {
+    setPlayerName(name);
+    try {
+      if (name) localStorage.setItem(PLAYER_NAME_KEY, name);
+      else localStorage.removeItem(PLAYER_NAME_KEY);
+    } catch {
+      // The forms still share state when browser storage is unavailable.
     }
   }
 
@@ -60,9 +81,9 @@ export function Home({ onSession }) {
           <button className={mode === "join" ? "active" : ""} onClick={() => setMode("join")} role="tab" aria-selected={mode === "join"}>Join a room</button>
         </div>
         {mode === "create" ? (
-          <CreateForm busy={busy} submit={submit} packs={packs} catalogError={catalogError} />
+          <CreateForm busy={busy} submit={submit} packs={packs} catalogError={catalogError} playerName={playerName} onPlayerNameChange={rememberPlayerName} />
         ) : (
-          <JoinForm busy={busy} submit={submit} invite={invite} />
+          <JoinForm busy={busy} submit={submit} invite={invite} playerName={playerName} onPlayerNameChange={rememberPlayerName} />
         )}
         {error && <p className="form-error" role="alert">{error}</p>}
         <p className="panel-footnote">No account needed. Just invite people you trust to lie convincingly.</p>

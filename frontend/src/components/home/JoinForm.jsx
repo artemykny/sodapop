@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { joinRoom, searchRooms } from "../../api/client.js";
 import { Field } from "../shared/Field.jsx";
 
-export function JoinForm({ busy, submit, invite }) {
-  const [values, setValues] = useState({ roomName: invite.get("room") || "", displayName: "", password: "" });
+export function JoinForm({ busy, submit, invite, playerName, onPlayerNameChange }) {
+  const [values, setValues] = useState({ roomName: invite.get("room") || "", password: "" });
   const [roomId, setRoomId] = useState(invite.get("roomId") || "");
   const [suggestions, setSuggestions] = useState([]);
   const update = (key) => (event) => setValues((current) => ({ ...current, [key]: event.target.value }));
@@ -35,7 +35,7 @@ export function JoinForm({ busy, submit, invite }) {
   function onSubmit(event) {
     event.preventDefault();
     submit(() => joinRoom({
-      roomName: values.roomName.trim(), displayName: values.displayName.trim(), password: values.password,
+      roomName: values.roomName.trim(), displayName: playerName.trim(), password: values.password,
       roomId,
     }));
   }
@@ -57,7 +57,7 @@ export function JoinForm({ busy, submit, invite }) {
           {suggestions.map((room) => <option key={`${room.game_id}:${room.name}`} value={room.name}>{room.game_name}</option>)}
         </datalist>
       </Field>
-      <Field label="Your display name"><input value={values.displayName} onChange={update("displayName")} maxLength={30} placeholder="How should we know you?" autoFocus required /></Field>
+      <Field label="Your display name"><input value={playerName} onChange={(event) => onPlayerNameChange(event.target.value)} maxLength={30} placeholder="How should we know you?" autoFocus required /></Field>
       <Field label="Password" hint="If required"><input type="password" value={values.password} onChange={update("password")} maxLength={100} /></Field>
       <button className="primary-button" disabled={busy}>{busy ? "Finding the room…" : "Join room"}<span aria-hidden="true">→</span></button>
     </form>

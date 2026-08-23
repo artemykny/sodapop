@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { createRoom } from "../../api/client.js";
 import { Field } from "../shared/Field.jsx";
 
-export function CreateForm({ busy, submit, packs, catalogError }) {
+export function CreateForm({ busy, submit, packs, catalogError, playerName, onPlayerNameChange }) {
   const [values, setValues] = useState({
-    roomName: "Friday suspects", hostName: "", password: "", playerLimit: 8,
+    roomName: "Friday suspects", password: "", playerLimit: 8,
     answerSeconds: 60, discussionSeconds: 120, votingSeconds: 45, rounds: 5, pack: "",
   });
   const [customQuestions, setCustomQuestions] = useState(null);
@@ -46,7 +46,7 @@ export function CreateForm({ busy, submit, packs, catalogError }) {
   function onSubmit(event) {
     event.preventDefault();
     const payload = {
-      name: values.roomName.trim(), password: values.password, host_name: values.hostName.trim(),
+      name: values.roomName.trim(), password: values.password, host_name: playerName.trim(),
       settings: {
         player_limit: Number(values.playerLimit), answer_seconds: Number(values.answerSeconds),
         discussion_seconds: Number(values.discussionSeconds), voting_seconds: Number(values.votingSeconds),
@@ -62,7 +62,7 @@ export function CreateForm({ busy, submit, packs, catalogError }) {
     <form className="room-form" onSubmit={onSubmit}>
       <div className="field-row">
         <Field label="Room name"><input value={values.roomName} onChange={update("roomName")} maxLength={60} required /></Field>
-        <Field label="Your name"><input value={values.hostName} onChange={update("hostName")} maxLength={30} placeholder="Host name" autoFocus required /></Field>
+        <Field label="Your name"><input value={playerName} onChange={(event) => onPlayerNameChange(event.target.value)} maxLength={30} placeholder="Host name" autoFocus required /></Field>
       </div>
       <fieldset className="field field-group">
         <legend>Question pack</legend>

@@ -1,5 +1,8 @@
 const incrementalEvents = new Set([
   "players_updated",
+  "settings_updated",
+  "game_paused",
+  "game_resumed",
   "round_started",
   "answer_locked",
   "answer_unlocked",
@@ -17,10 +20,25 @@ export function applyRoomEvent(state, message) {
 
   const payload = message.payload || {};
   if (!Number.isInteger(payload.version) || payload.version <= state.version) return state;
-  const next = { ...state, version: payload.version };
+  const next = {
+    ...state,
+    version: payload.version,
+    settings: payload.settings || state.settings,
+    max_rounds: payload.max_rounds ?? state.max_rounds,
+    deadline: payload.deadline !== undefined ? payload.deadline : state.deadline,
+    paused: payload.paused ?? state.paused,
+    remaining_seconds: payload.paused === false
+      ? undefined
+      : (payload.remaining_seconds ?? state.remaining_seconds),
+  };
 
   switch (message.type) {
     case "players_updated":
+      return { ...next, players: payload.players };
+    case "settings_updated":
+      return { ...next, players: payload.players };
+    case "game_paused":
+    case "game_resumed":
       return { ...next, players: payload.players };
     case "round_started":
       return {

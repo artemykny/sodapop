@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Avatar } from "../shared/Avatar.jsx";
+import { HostControlsModal } from "./HostControlsModal.jsx";
 
-export function PlayersPanel({ state, me, copyInvite, leave }) {
+export function PlayersPanel({ state, me, send, copyInvite, leave }) {
+  const [controlsOpen, setControlsOpen] = useState(false);
   const ranked = [...state.players].sort((a, b) => b.score - a.score);
   return (
     <aside className="players-panel">
@@ -14,8 +17,9 @@ export function PlayersPanel({ state, me, copyInvite, leave }) {
           </div>
         ))}
       </div>
-      <div className="panel-settings"><span>{state.settings.rounds} rounds</span><span>{state.settings.answer_seconds}s answer</span><span>{state.settings.voting_seconds}s vote</span></div>
+      {me?.is_host && state.phase !== "finished" && <button className="secondary-button room-settings-button" onClick={() => setControlsOpen(true)}>Host controls</button>}
       <button className="text-button leave-button" onClick={leave}>Leave room</button>
+      {controlsOpen && state.phase !== "finished" && <HostControlsModal state={state} send={send} onClose={() => setControlsOpen(false)} />}
     </aside>
   );
 }

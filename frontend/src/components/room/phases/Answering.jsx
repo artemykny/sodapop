@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export function Answering({ state, send, isHost }) {
+export function Answering({ state, send }) {
   const [answer, setAnswer] = useState(state.your_answer || "");
   const [submitting, setSubmitting] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
@@ -15,12 +15,6 @@ export function Answering({ state, send, isHost }) {
     if (send("unlock_answer", {}, () => setUnlocking(false))) setUnlocking(true);
   }
 
-  function skipToDiscussion() {
-    if (window.confirm("End answering now? Players who have not locked an answer will be left out of this round.")) {
-      send("advance");
-    }
-  }
-
   if (state.answer_locked) {
     return (
       <div className="locked-card">
@@ -32,7 +26,6 @@ export function Answering({ state, send, isHost }) {
           <span>Your answer</span><blockquote>“{state.your_answer}”</blockquote>
         </div>
         <button className="secondary-button" onClick={unlockAnswer} disabled={unlocking}>{unlocking ? "Unlocking…" : "Edit answer"}</button>
-        {isHost && <button className="text-button" onClick={skipToDiscussion}>Skip to discussion →</button>}
       </div>
     );
   }

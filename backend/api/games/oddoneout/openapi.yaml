@@ -427,7 +427,7 @@ components:
             type: integer
     RoomView:
       type: object
-      required: [version, room_id, room_name, phase, settings, players, round, your_player_id, answer_locked, vote_locked]
+      required: [version, room_id, room_name, phase, settings, max_rounds, players, round, paused, your_player_id, answer_locked, vote_locked]
       properties:
         version:
           type: integer
@@ -440,6 +440,9 @@ components:
           enum: [lobby, answering, discussion, voting, round_result, finished]
         settings:
           $ref: "#/components/schemas/Settings"
+        max_rounds:
+          type: integer
+          minimum: 1
         players:
           type: array
           items:
@@ -449,6 +452,11 @@ components:
         deadline:
           type: [string, "null"]
           format: date-time
+        paused:
+          type: boolean
+        remaining_seconds:
+          type: integer
+          minimum: 1
         your_player_id:
           type: string
         your_prompt:

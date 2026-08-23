@@ -28,6 +28,9 @@ Supported commands:
 | Type | Payload | Who may send it |
 | --- | --- | --- |
 | `start_game` | none | Host in the lobby |
+| `update_settings` | `{"settings":{...}}` | Host before the game finishes |
+| `pause_game` | none | Host while a phase timer is running |
+| `resume_game` | none | Host while the game is paused |
 | `submit_answer` | `{"answer":"..."}` | Any player during answering |
 | `unlock_answer` | none | A player with a locked answer during answering |
 | `cast_vote` | `{"player_id":"ply_..."}` | Any player during voting |
@@ -49,6 +52,9 @@ incremental player-safe events:
 | Type | Meaning |
 | --- | --- |
 | `players_updated` | Public roster, connection, or score data changed |
+| `settings_updated` | Host changed the room settings |
+| `game_paused` | The phase timer stopped with a fixed `remaining_seconds` |
+| `game_resumed` | The phase timer resumed with a new absolute `deadline` |
 | `round_started` | A new round began; includes only this player's prompt |
 | `answer_locked` | This player's answer was accepted |
 | `answer_unlocked` | This player's answer was unlocked |
@@ -79,4 +85,9 @@ once discussion starts. The imposter and vote counts appear only in
 `round_result` and a reconnecting player's finished sync.
 
 Clients calculate a displayed countdown from absolute `deadline` timestamps.
-The server remains authoritative for every phase transition and locked action.
+Changing settings does not reset an active deadline; duration changes apply the
+next time that phase starts. While paused, the server removes the deadline and
+publishes a fixed remaining time. Players can continue submitting, unlocking,
+and revising answers or votes, but completing every response does not advance
+the phase until the host resumes or advances manually. The server remains
+authoritative for every phase transition, settings update, and locked action.

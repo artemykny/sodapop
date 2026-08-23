@@ -65,3 +65,54 @@ test("vote lock events retain only the current player's target", () => {
   assert.equal(unlocked.vote_locked, false);
   assert.equal(unlocked.your_vote, undefined);
 });
+
+test("settings updates synchronize the roster and room limits", () => {
+  const settings = {
+    player_limit: 10,
+    answer_seconds: 90,
+    discussion_seconds: 180,
+    voting_seconds: 60,
+    rounds: 4,
+  };
+  const state = applyRoomEvent({ ...lobby, settings: {} }, {
+    type: "settings_updated",
+    payload: {
+      version: 2,
+      settings,
+      max_rounds: 10,
+      players: [{ id: "one", connected: true }],
+    },
+  });
+  assert.deepEqual(state.settings, settings);
+  assert.equal(state.max_rounds, 10);
+  assert.equal(state.players[0].connected, true);
+});
+
+test("pause events freeze remaining time and resume from the new deadline", () => {
+  const paused = applyRoomEvent({ ...lobby, deadline: "old-deadline", paused: false }, {
+    type: "game_paused",
+    payload: {
+      version: 2,
+      deadline: null,
+      paused: true,
+      remaining_seconds: 42,
+      players: lobby.players,
+    },
+  });
+  assert.equal(paused.deadline, null);
+  assert.equal(paused.paused, true);
+  assert.equal(paused.remaining_seconds, 42);
+
+  const resumed = applyRoomEvent(paused, {
+    type: "game_resumed",
+    payload: {
+      version: 3,
+      deadline: "new-deadline",
+      paused: false,
+      players: lobby.players,
+    },
+  });
+  assert.equal(resumed.deadline, "new-deadline");
+  assert.equal(resumed.paused, false);
+  assert.equal(resumed.remaining_seconds, undefined);
+});

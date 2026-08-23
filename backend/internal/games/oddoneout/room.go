@@ -34,18 +34,20 @@ type roundState struct {
 }
 
 type persistedRoom struct {
-	ID            string         `json:"id"`
-	Name          string         `json:"name"`
-	PasswordHash  []byte         `json:"password_hash,omitempty"`
-	Settings      Settings       `json:"settings"`
-	Questions     []Question     `json:"questions"`
-	QuestionOrder []int          `json:"question_order"`
-	Players       []*playerState `json:"players"`
-	Phase         Phase          `json:"phase"`
-	Round         int            `json:"round"`
-	Current       *roundState    `json:"current,omitempty"`
-	Deadline      *time.Time     `json:"deadline,omitempty"`
-	Version       uint64         `json:"version"`
+	ID             string         `json:"id"`
+	Name           string         `json:"name"`
+	PasswordHash   []byte         `json:"password_hash,omitempty"`
+	Settings       Settings       `json:"settings"`
+	Questions      []Question     `json:"questions"`
+	QuestionOrder  []int          `json:"question_order"`
+	Players        []*playerState `json:"players"`
+	Phase          Phase          `json:"phase"`
+	Round          int            `json:"round"`
+	Current        *roundState    `json:"current,omitempty"`
+	Deadline       *time.Time     `json:"deadline,omitempty"`
+	Paused         bool           `json:"paused"`
+	PauseRemaining time.Duration  `json:"pause_remaining,omitempty"`
+	Version        uint64         `json:"version"`
 }
 
 type Room struct {
@@ -195,6 +197,97 @@ func (r *Room) Start(actorID string) error {
 	return nil
 }
 
+func (r *Room) UpdateSettings(actorID string, settings Settings) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err := r.requireHostLocked(actorID); err != nil {
+		return err
+	}
+	if err := settings.Validate(); err != nil {
+		return err
+	}
+	if r.Phase == PhaseFinished {
+		return ErrInvalidPhase
+	}
+	if settings.PlayerLimit < len(r.Players) {
+		return fmt.Errorf("player_limit cannot be lower than the current %d players", len(r.Players))
+	}
+	if settings.Rounds < r.Round {
+		return fmt.Errorf("rounds cannot be lower than the current round %d", r.Round)
+	}
+	if settings.Rounds > len(r.Questions) {
+		return fmt.Errorf("rounds cannot exceed this room's %d questions", len(r.Questions))
+	}
+	if settings == r.Settings {
+		return nil
+	}
+	r.Settings = settings
+	r.changedLocked()
+	return nil
+}
+
+func (r *Room) Pause(actorID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err := r.requireHostLocked(actorID); err != nil {
+		return err
+	}
+	if r.Paused {
+		return ErrAlreadyPaused
+	}
+	if r.Deadline == nil {
+		return ErrInvalidPhase
+	}
+	remaining := r.Deadline.Sub(r.now().UTC())
+	if remaining <= 0 {
+		remaining = time.Millisecond
+	}
+	r.stopTimerLocked()
+	r.timerGeneration++
+	r.Paused = true
+	r.PauseRemaining = remaining
+	r.Deadline = nil
+	r.changedLocked()
+	return nil
+}
+
+func (r *Room) Resume(actorID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err := r.requireHostLocked(actorID); err != nil {
+		return err
+	}
+	if !r.Paused {
+		return ErrNotPaused
+	}
+	if r.Phase != PhaseAnswering && r.Phase != PhaseDiscussion && r.Phase != PhaseVoting && r.Phase != PhaseRoundResult {
+		return ErrInvalidPhase
+	}
+	r.Paused = false
+	duration := r.PauseRemaining
+	r.PauseRemaining = 0
+	switch r.Phase {
+	case PhaseAnswering:
+		if len(r.Current.Answers) == len(r.Players) {
+			r.beginDiscussionLocked()
+		} else {
+			r.setDeadlineLocked(duration, PhaseAnswering)
+		}
+	case PhaseDiscussion:
+		r.setDeadlineLocked(duration, PhaseDiscussion)
+	case PhaseVoting:
+		if len(r.Current.Votes) == len(r.Players) {
+			r.finishVotingLocked()
+		} else {
+			r.setDeadlineLocked(duration, PhaseVoting)
+		}
+	case PhaseRoundResult:
+		r.setDeadlineLocked(duration, PhaseRoundResult)
+	}
+	r.changedLocked()
+	return nil
+}
+
 func (r *Room) SubmitAnswer(playerID, answer string) error {
 	answer = strings.TrimSpace(answer)
 	if answer == "" || len([]rune(answer)) > 500 {
@@ -212,7 +305,7 @@ func (r *Room) SubmitAnswer(playerID, answer string) error {
 		return ErrAlreadyLocked
 	}
 	r.Current.Answers[playerID] = answer
-	if len(r.Current.Answers) == len(r.Players) {
+	if len(r.Current.Answers) == len(r.Players) && !r.Paused {
 		r.beginDiscussionLocked()
 	}
 	r.changedLocked()
@@ -255,7 +348,7 @@ func (r *Room) CastVote(playerID, targetID string) error {
 		return ErrAlreadyVoted
 	}
 	r.Current.Votes[playerID] = targetID
-	if len(r.Current.Votes) == len(r.Players) {
+	if len(r.Current.Votes) == len(r.Players) && !r.Paused {
 		r.finishVotingLocked()
 	}
 	r.changedLocked()
@@ -315,6 +408,8 @@ func (r *Room) Stop(actorID string) error {
 	r.stopTimerLocked()
 	r.Phase = PhaseFinished
 	r.Deadline = nil
+	r.Paused = false
+	r.PauseRemaining = 0
 	r.changedLocked()
 	return nil
 }
@@ -327,8 +422,12 @@ func (r *Room) View(playerID string) (View, error) {
 	}
 	view := View{
 		Version: r.Version, RoomID: r.ID, RoomName: r.Name, Phase: r.Phase,
-		Settings: r.Settings, Players: make([]Player, 0, len(r.Players)),
+		Settings: r.Settings, MaxRounds: len(r.Questions), Players: make([]Player, 0, len(r.Players)),
 		Round: r.Round, Deadline: cloneTime(r.Deadline), YourPlayerID: playerID,
+	}
+	view.Paused = r.Paused
+	if r.Paused && r.PauseRemaining > 0 {
+		view.RemainingSeconds = int((r.PauseRemaining + time.Second - 1) / time.Second)
 	}
 	for _, state := range r.Players {
 		view.Players = append(view.Players, state.Player)
@@ -375,6 +474,8 @@ func (r *Room) beginRoundLocked() error {
 	if r.Round >= r.Settings.Rounds {
 		r.Phase = PhaseFinished
 		r.Deadline = nil
+		r.Paused = false
+		r.PauseRemaining = 0
 		return nil
 	}
 	imposterIndex, err := r.intn(len(r.Players))
@@ -436,6 +537,8 @@ func (r *Room) nextRoundOrFinishLocked() error {
 		r.stopTimerLocked()
 		r.Phase = PhaseFinished
 		r.Deadline = nil
+		r.Paused = false
+		r.PauseRemaining = 0
 		return nil
 	}
 	return r.beginRoundLocked()
@@ -443,6 +546,8 @@ func (r *Room) nextRoundOrFinishLocked() error {
 
 func (r *Room) setDeadlineLocked(duration time.Duration, phase Phase) {
 	r.stopTimerLocked()
+	r.Paused = false
+	r.PauseRemaining = 0
 	r.timerGeneration++
 	generation := r.timerGeneration
 	deadline := r.now().UTC().Add(duration)
@@ -455,7 +560,7 @@ func (r *Room) setDeadlineLocked(duration time.Duration, phase Phase) {
 func (r *Room) onDeadline(phase Phase, generation uint64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.Phase != phase || r.timerGeneration != generation {
+	if r.Phase != phase || r.timerGeneration != generation || r.Paused {
 		return
 	}
 	switch phase {

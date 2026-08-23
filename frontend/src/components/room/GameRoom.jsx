@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { phaseCopy } from "../../constants/phaseCopy.js";
 import { useCountdown } from "../../hooks/useCountdown.js";
 import { Timer } from "../shared/Timer.jsx";
@@ -9,16 +10,22 @@ export function GameRoom({ session, connection, send, leave, setNotice }) {
   const me = state.players.find((player) => player.id === state.your_player_id);
   const isHost = Boolean(me?.is_host);
   const copy = phaseCopy[state.phase] || phaseCopy.lobby;
-  const timeLeft = useCountdown(state.deadline);
+  const countdown = useCountdown(state.deadline);
+  const timeLeft = state.paused ? (state.remaining_seconds || 0) : countdown;
+  const previousPaused = useRef(state.paused);
+
+  useEffect(() => {
+    if (previousPaused.current === state.paused) return;
+    setNotice(state.paused
+      ? "Game paused. The timer is stopped; answers and votes remain editable."
+      : "Game resumed. The timer is running again.");
+    previousPaused.current = state.paused;
+  }, [state.paused, setNotice]);
 
   function copyInvite() {
     const params = new URLSearchParams({ room: state.room_name, roomId: state.room_id });
     const invite = `${window.location.origin}${window.location.pathname}?${params}`;
     navigator.clipboard?.writeText(invite).then(() => setNotice("Invite link copied."), () => setNotice(invite));
-  }
-
-  function stopGame() {
-    if (window.confirm("End this game for everyone?")) send("stop_game");
   }
 
   function confirmLeave() {
@@ -37,7 +44,7 @@ export function GameRoom({ session, connection, send, leave, setNotice }) {
         </div>
         <div className="round-heading">
           {state.phase !== "lobby" && <span>Round {Math.min(state.round, state.settings.rounds)} / {state.settings.rounds}</span>}
-          {state.deadline && <Timer seconds={timeLeft} />}
+          {(state.deadline || state.paused) && <Timer seconds={timeLeft} paused={state.paused} settings={state.settings} />}
         </div>
       </header>
 
@@ -47,12 +54,9 @@ export function GameRoom({ session, connection, send, leave, setNotice }) {
           <h1>{copy.title}</h1>
         </div>
         <PhaseContent state={state} me={me} isHost={isHost} send={send} copyInvite={copyInvite} leave={leave} />
-        {isHost && state.phase !== "lobby" && state.phase !== "finished" && (
-          <button className="text-button danger-link" onClick={stopGame}>End game</button>
-        )}
       </section>
 
-      <PlayersPanel state={state} me={me} copyInvite={copyInvite} leave={confirmLeave} />
+      <PlayersPanel state={state} me={me} send={send} copyInvite={copyInvite} leave={confirmLeave} />
     </main>
   );
 }

@@ -29,6 +29,8 @@ var (
 	ErrAlreadyVoted    = errors.New("vote is already locked")
 	ErrAnswerNotLocked = errors.New("answer is not locked")
 	ErrVoteNotLocked   = errors.New("vote is not locked")
+	ErrAlreadyPaused   = errors.New("game is already paused")
+	ErrNotPaused       = errors.New("game is not paused")
 )
 
 type Question struct {
@@ -138,23 +140,26 @@ type RoundResult struct {
 // View is the player-specific transport projection of a room. It must never
 // contain hidden room state or questions belonging to another player.
 type View struct {
-	Version      uint64       `json:"version"`
-	RoomID       string       `json:"room_id"`
-	RoomName     string       `json:"room_name"`
-	Phase        Phase        `json:"phase"`
-	Settings     Settings     `json:"settings"`
-	Players      []Player     `json:"players"`
-	Round        int          `json:"round"`
-	Deadline     *time.Time   `json:"deadline,omitempty"`
-	YourPlayerID string       `json:"your_player_id"`
-	YourPrompt   string       `json:"your_prompt,omitempty"`
-	AnswerLocked bool         `json:"answer_locked"`
-	YourAnswer   string       `json:"your_answer,omitempty"`
-	VoteLocked   bool         `json:"vote_locked"`
-	YourVote     string       `json:"your_vote,omitempty"`
-	RealQuestion string       `json:"real_question,omitempty"`
-	Answers      []Answer     `json:"answers,omitempty"`
-	Result       *RoundResult `json:"result,omitempty"`
+	Version          uint64       `json:"version"`
+	RoomID           string       `json:"room_id"`
+	RoomName         string       `json:"room_name"`
+	Phase            Phase        `json:"phase"`
+	Settings         Settings     `json:"settings"`
+	MaxRounds        int          `json:"max_rounds"`
+	Players          []Player     `json:"players"`
+	Round            int          `json:"round"`
+	Deadline         *time.Time   `json:"deadline,omitempty"`
+	Paused           bool         `json:"paused"`
+	RemainingSeconds int          `json:"remaining_seconds,omitempty"`
+	YourPlayerID     string       `json:"your_player_id"`
+	YourPrompt       string       `json:"your_prompt,omitempty"`
+	AnswerLocked     bool         `json:"answer_locked"`
+	YourAnswer       string       `json:"your_answer,omitempty"`
+	VoteLocked       bool         `json:"vote_locked"`
+	YourVote         string       `json:"your_vote,omitempty"`
+	RealQuestion     string       `json:"real_question,omitempty"`
+	Answers          []Answer     `json:"answers,omitempty"`
+	Result           *RoundResult `json:"result,omitempty"`
 }
 
 type Credentials struct {

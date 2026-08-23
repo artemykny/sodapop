@@ -142,10 +142,47 @@ test("three players complete a round and reach final scores", async ({ browser, 
     await joinRoom(chandra, { roomName, displayName: "Chandra", password: "secret" });
 
     await expect(page.getByText("3 / 8 players", { exact: true })).toBeVisible();
+    await expect(bob.getByRole("button", { name: "Host controls", exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Host controls", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Host controls" })).toBeVisible();
+    await page.getByLabel("Player limit").fill("9");
+    await page.getByLabel("Answer time (seconds)").fill("90");
+    await page.getByLabel("Discussion time (seconds)").fill("150");
+    await page.getByLabel("Voting time (seconds)").fill("60");
+    await page.getByRole("button", { name: /Save settings/ }).click();
+    await expect(page.getByRole("dialog", { name: "Host controls" })).toBeHidden();
+    await expect(page.getByText("3 / 9 players", { exact: true })).toBeVisible();
+    await expect(page.locator(".players-panel .panel-settings")).toHaveCount(0);
+    await expect(bob.getByText("90s answers", { exact: true })).toBeVisible();
+    await expect(chandra.getByText("150s debate", { exact: true })).toBeVisible();
+
     await page.getByRole("button", { name: /Start the game/ }).click();
     await Promise.all([page, bob, chandra].map((playerPage) => (
       expect(playerPage.getByRole("heading", { name: "Answer in secret" })).toBeVisible()
     )));
+
+    const timerBeforeSettings = Number((await page.locator(".timer").getAttribute("aria-label")).match(/^\d+/)[0]);
+    await page.getByRole("button", { name: "Host controls", exact: true }).click();
+    await expect(page.getByText("The current countdown will keep running.")).toBeVisible();
+    await page.getByLabel("Answer time (seconds)").fill("120");
+    await page.getByRole("button", { name: /Save settings/ }).click();
+    await expect(page.getByRole("dialog", { name: "Host controls" })).toBeHidden();
+    await bob.locator(".timer").hover();
+    await expect(bob.getByRole("tooltip", { name: /Game settings/ })).toBeVisible();
+    await expect(bob.getByRole("tooltip")).toContainText("120s");
+    const timerAfterSettings = Number((await page.locator(".timer").getAttribute("aria-label")).match(/^\d+/)[0]);
+    expect(timerAfterSettings).toBeLessThanOrEqual(timerBeforeSettings);
+
+    await page.getByRole("button", { name: "Host controls", exact: true }).click();
+    await page.getByRole("button", { name: "Pause timer" }).click();
+    await Promise.all([page, bob, chandra].map((playerPage) => (
+      expect(playerPage.getByRole("alert")).toContainText("Game paused")
+    )));
+    await expect(page.locator(".game-paused-banner")).toHaveCount(0);
+    const pausedTimerLabel = await page.locator(".timer").getAttribute("aria-label");
+    expect(pausedTimerLabel).toMatch(/^Paused with \d+ seconds remaining$/);
+    await page.waitForTimeout(1_100);
+    await expect(page.locator(".timer")).toHaveAttribute("aria-label", pausedTimerLabel);
 
     const prompts = await Promise.all([page, bob, chandra].map((playerPage) => (
       playerPage.locator(".answer-card h2").textContent()
@@ -155,6 +192,7 @@ test("three players complete a round and reach final scores", async ({ browser, 
     await bob.reload();
     await expect(bob.getByRole("heading", { name: "Answer in secret" })).toBeVisible();
     await expect(bob.locator(".answer-card h2")).toHaveText(prompts[1]);
+    await expect(bob.locator(".timer")).toHaveAttribute("aria-label", pausedTimerLabel);
 
     await page.getByLabel("Your answer").fill("Host answer");
     await page.getByRole("button", { name: /Lock answer/ }).click();
@@ -173,14 +211,27 @@ test("three players complete a round and reach final scores", async ({ browser, 
       await playerPage.getByLabel("Your answer").fill(answer);
       await playerPage.getByRole("button", { name: /Lock answer/ }).click();
     }
+    await Promise.all([page, bob, chandra].map((playerPage) => (
+      expect(playerPage.getByRole("heading", { name: "Answer locked" })).toBeVisible()
+    )));
+    await page.getByRole("button", { name: "Host controls", exact: true }).click();
+    await expect(page.getByText("Players can still edit and submit answers or votes while paused.")).toBeVisible();
+    await page.getByRole("button", { name: "Resume timer" }).click();
     await Promise.all([page, bob, chandra].map(async (playerPage) => {
       await expect(playerPage.getByRole("heading", { name: "Who got a different question?" })).toBeVisible();
       await expect(playerPage.locator(".revealed-answer")).toHaveCount(3);
     }));
 
-    await page.getByRole("button", { name: /Start the vote/ }).click();
+    await page.getByRole("button", { name: "Host controls", exact: true }).click();
+    await page.getByRole("button", { name: /Start voting/ }).click();
     await Promise.all([page, bob, chandra].map((playerPage) => (
       expect(playerPage.getByRole("heading", { name: "Point the finger" })).toBeVisible()
+    )));
+
+    await page.getByRole("button", { name: "Host controls", exact: true }).click();
+    await page.getByRole("button", { name: "Pause timer" }).click();
+    await Promise.all([page, bob, chandra].map((playerPage) => (
+      expect(playerPage.getByRole("alert")).toContainText("Game paused")
     )));
 
     await suspect(page, "Bob").click();
@@ -197,11 +248,18 @@ test("three players complete a round and reach final scores", async ({ browser, 
     await chandra.getByRole("button", { name: /Lock accusation/ }).click();
 
     await Promise.all([page, bob, chandra].map((playerPage) => (
+      expect(playerPage.getByRole("heading", { name: "Vote locked" })).toBeVisible()
+    )));
+    await page.getByRole("button", { name: "Host controls", exact: true }).click();
+    await page.getByRole("button", { name: "Resume timer" }).click();
+
+    await Promise.all([page, bob, chandra].map((playerPage) => (
       expect(playerPage.getByRole("heading", { name: "Round revealed" })).toBeVisible()
     )));
     await expect(page.locator(".vote-row")).toHaveCount(3);
 
-    await page.getByRole("button", { name: /See final scores/ }).click();
+    await page.getByRole("button", { name: "Host controls", exact: true }).click();
+    await page.getByRole("button", { name: /Show final scores/ }).click();
     await Promise.all([page, bob, chandra].map((playerPage) => (
       expect(playerPage.getByRole("heading", { name: "Final scores" })).toBeVisible()
     )));

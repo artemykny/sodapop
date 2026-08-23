@@ -217,6 +217,147 @@ func TestAnswerDeadlineSurvivesIntermediateStateChanges(t *testing.T) {
 	}
 }
 
+func TestHostCanUpdateSettingsWithoutResettingCurrentDeadline(t *testing.T) {
+	params := testRoomParams()
+	params.Questions = append(params.Questions, Question{Real: "Best drink?", Fake: "Worst drink?"})
+	room, host, err := NewRoom(params)
+	if err != nil {
+		t.Fatalf("NewRoom() error = %v", err)
+	}
+	bob, err := room.Join("Bob", "secret")
+	if err != nil {
+		t.Fatalf("Join(Bob) error = %v", err)
+	}
+	chandra, err := room.Join("Chandra", "secret")
+	if err != nil {
+		t.Fatalf("Join(Chandra) error = %v", err)
+	}
+
+	settings := room.Settings
+	settings.PlayerLimit = 8
+	settings.Rounds = 2
+	if err := room.UpdateSettings(bob.PlayerID, settings); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("UpdateSettings(non-host) error = %v, want ErrForbidden", err)
+	}
+	tooSmall := settings
+	tooSmall.PlayerLimit = 2
+	if err := room.UpdateSettings(host.PlayerID, tooSmall); err == nil {
+		t.Fatal("UpdateSettings(player limit below roster) succeeded")
+	}
+	tooManyRounds := settings
+	tooManyRounds.Rounds = 3
+	if err := room.UpdateSettings(host.PlayerID, tooManyRounds); err == nil {
+		t.Fatal("UpdateSettings(rounds above question capacity) succeeded")
+	}
+	if err := room.UpdateSettings(host.PlayerID, settings); err != nil {
+		t.Fatalf("UpdateSettings(lobby) error = %v", err)
+	}
+	if view := mustView(t, room, bob.PlayerID); view.Settings != settings || view.MaxRounds != 2 {
+		t.Fatalf("updated lobby view = %+v", view)
+	}
+
+	if err := room.Start(host.PlayerID); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	before := mustView(t, room, host.PlayerID)
+	settings.AnswerSeconds = 120
+	settings.DiscussionSeconds = 180
+	if err := room.UpdateSettings(host.PlayerID, settings); err != nil {
+		t.Fatalf("UpdateSettings(active round) error = %v", err)
+	}
+	after := mustView(t, room, host.PlayerID)
+	if after.Settings != settings {
+		t.Fatalf("active settings = %+v, want %+v", after.Settings, settings)
+	}
+	if before.Deadline == nil || after.Deadline == nil || !before.Deadline.Equal(*after.Deadline) {
+		t.Fatalf("active deadline changed from %v to %v", before.Deadline, after.Deadline)
+	}
+
+	if err := room.Pause(bob.PlayerID); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("Pause(non-host) error = %v, want ErrForbidden", err)
+	}
+	if err := room.Pause(host.PlayerID); err != nil {
+		t.Fatalf("Pause(answering) error = %v", err)
+	}
+	paused := mustView(t, room, bob.PlayerID)
+	if !paused.Paused || paused.Deadline != nil || paused.RemainingSeconds < 1 {
+		t.Fatalf("paused answering view = %+v", paused)
+	}
+	if err := room.Pause(host.PlayerID); !errors.Is(err, ErrAlreadyPaused) {
+		t.Fatalf("second Pause() error = %v, want ErrAlreadyPaused", err)
+	}
+	if err := room.Resume(bob.PlayerID); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("Resume(non-host) error = %v, want ErrForbidden", err)
+	}
+	if err := room.Resume(host.PlayerID); err != nil {
+		t.Fatalf("Resume(answering before submissions) error = %v", err)
+	}
+	resumed := mustView(t, room, host.PlayerID)
+	if resumed.Phase != PhaseAnswering || resumed.Paused || resumed.Deadline == nil {
+		t.Fatalf("resumed answering view = %+v", resumed)
+	}
+	if err := room.Resume(host.PlayerID); !errors.Is(err, ErrNotPaused) {
+		t.Fatalf("second Resume() error = %v, want ErrNotPaused", err)
+	}
+	if err := room.Pause(host.PlayerID); err != nil {
+		t.Fatalf("Pause(answering again) error = %v", err)
+	}
+	if err := room.SubmitAnswer(host.PlayerID, "Host answer"); err != nil {
+		t.Fatalf("SubmitAnswer(host while paused) error = %v", err)
+	}
+	if err := room.UnlockAnswer(host.PlayerID); err != nil {
+		t.Fatalf("UnlockAnswer(host while paused) error = %v", err)
+	}
+	if err := room.SubmitAnswer(host.PlayerID, "Revised host answer"); err != nil {
+		t.Fatalf("SubmitAnswer(host again while paused) error = %v", err)
+	}
+	if err := room.SubmitAnswer(bob.PlayerID, "Bob answer"); err != nil {
+		t.Fatalf("SubmitAnswer(Bob while paused) error = %v", err)
+	}
+	if err := room.SubmitAnswer(chandra.PlayerID, "Chandra answer"); err != nil {
+		t.Fatalf("SubmitAnswer(Chandra while paused) error = %v", err)
+	}
+	if view := mustView(t, room, host.PlayerID); view.Phase != PhaseAnswering || !view.Paused {
+		t.Fatalf("all paused answers advanced phase: %+v", view)
+	}
+	if err := room.Resume(host.PlayerID); err != nil {
+		t.Fatalf("Resume(answering) error = %v", err)
+	}
+	if view := mustView(t, room, host.PlayerID); view.Phase != PhaseDiscussion || view.Paused {
+		t.Fatalf("resume with all answers = %+v", view)
+	}
+	if err := room.Advance(host.PlayerID); err != nil {
+		t.Fatalf("Advance(to voting) error = %v", err)
+	}
+	if err := room.Pause(host.PlayerID); err != nil {
+		t.Fatalf("Pause(voting) error = %v", err)
+	}
+	if err := room.CastVote(host.PlayerID, bob.PlayerID); err != nil {
+		t.Fatalf("CastVote(host while paused) error = %v", err)
+	}
+	if err := room.UnlockVote(host.PlayerID); err != nil {
+		t.Fatalf("UnlockVote(host while paused) error = %v", err)
+	}
+	if err := room.CastVote(host.PlayerID, chandra.PlayerID); err != nil {
+		t.Fatalf("CastVote(host again while paused) error = %v", err)
+	}
+	if err := room.CastVote(bob.PlayerID, host.PlayerID); err != nil {
+		t.Fatalf("CastVote(Bob while paused) error = %v", err)
+	}
+	if err := room.CastVote(chandra.PlayerID, host.PlayerID); err != nil {
+		t.Fatalf("CastVote(Chandra while paused) error = %v", err)
+	}
+	if view := mustView(t, room, host.PlayerID); view.Phase != PhaseVoting || !view.Paused {
+		t.Fatalf("all paused votes advanced phase: %+v", view)
+	}
+	if err := room.Resume(host.PlayerID); err != nil {
+		t.Fatalf("Resume(voting) error = %v", err)
+	}
+	if view := mustView(t, room, host.PlayerID); view.Phase != PhaseRoundResult || view.Paused {
+		t.Fatalf("resume with all votes = %+v", view)
+	}
+}
+
 func testRoomParams() CreateRoomParams {
 	return CreateRoomParams{
 		ID: "room_test", Name: "Friday Game", Password: "secret", HostName: "Host",

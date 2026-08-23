@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Avatar } from "../../shared/Avatar.jsx";
 
-export function Voting({ state, me, send, isHost }) {
+export function Voting({ state, me, send }) {
   const [selected, setSelected] = useState(state.your_vote || "");
   const [submitted, setSubmitted] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
@@ -12,12 +12,6 @@ export function Voting({ state, me, send, isHost }) {
 
   function unlockVote() {
     if (send("unlock_vote", {}, () => setUnlocking(false))) setUnlocking(true);
-  }
-
-  function revealVote() {
-    if (window.confirm("Reveal the result now? Players who have not locked a vote will not be counted.")) {
-      send("advance");
-    }
   }
 
   if (state.vote_locked) {
@@ -31,7 +25,6 @@ export function Voting({ state, me, send, isHost }) {
           <span>Your accusation</span><strong>{accused?.display_name || "Unknown player"}</strong>
         </div>
         <button className="secondary-button" onClick={unlockVote} disabled={unlocking}>{unlocking ? "Unlocking…" : "Change vote"}</button>
-        {isHost && <button className="text-button" onClick={revealVote}>Reveal the vote →</button>}
       </div>
     );
   }

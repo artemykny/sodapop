@@ -17,6 +17,15 @@ During answering and voting, players can review and unlock only their own
 submitted choice while the phase remains open. Refreshing or reconnecting
 restores that private locked state from the backend.
 
+The lobby keeps its primary Start the game button in the main stage. The room
+sidebar opens one Host controls dialog for in-round phase actions, pause/resume,
+room settings, and ending the game. Pausing freezes the authoritative timer but
+players can still submit, unlock, and revise answers or votes. The backend
+validates and broadcasts settings changes; an active countdown is never reset by
+an edit. Pause and resume changes appear as compact notifications instead of
+occupying the game stage. Hovering or focusing the active timer in the top-right
+corner shows the current room and phase-duration settings.
+
 ## Source layout
 
 - `src/api/`: coordinator and game-server requests.

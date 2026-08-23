@@ -3,6 +3,10 @@ import { adminPassword } from "./constants.js";
 import { createRoom, joinRoom, suspect, uniqueRoom } from "./helpers.js";
 
 test("loads backend-owned pack metadata and creates a room", async ({ page, request }) => {
+  await page.goto("/");
+  const bodyFont = await page.locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
+  expect(bodyFont).toContain("Nunito Sans Variable");
+
   const catalogResponse = await request.get("http://127.0.0.1:18080/v1/question-packs");
   expect(catalogResponse.ok()).toBeTruthy();
   const catalog = await catalogResponse.json();

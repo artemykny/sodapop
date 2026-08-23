@@ -27,6 +27,8 @@ var (
 	ErrNameTaken       = errors.New("display name is already in use")
 	ErrAlreadyLocked   = errors.New("answer is already locked")
 	ErrAlreadyVoted    = errors.New("vote is already locked")
+	ErrAnswerNotLocked = errors.New("answer is not locked")
+	ErrVoteNotLocked   = errors.New("vote is not locked")
 )
 
 type Question struct {
@@ -147,7 +149,9 @@ type View struct {
 	YourPlayerID string       `json:"your_player_id"`
 	YourPrompt   string       `json:"your_prompt,omitempty"`
 	AnswerLocked bool         `json:"answer_locked"`
+	YourAnswer   string       `json:"your_answer,omitempty"`
 	VoteLocked   bool         `json:"vote_locked"`
+	YourVote     string       `json:"your_vote,omitempty"`
 	RealQuestion string       `json:"real_question,omitempty"`
 	Answers      []Answer     `json:"answers,omitempty"`
 	Result       *RoundResult `json:"result,omitempty"`

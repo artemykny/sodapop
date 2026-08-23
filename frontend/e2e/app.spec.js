@@ -16,6 +16,13 @@ test("loads backend-owned pack metadata and creates a room", async ({ page, requ
   await createRoom(page, { roomName });
   await expect(page.getByText(roomName, { exact: true }).first()).toBeVisible();
   await expect(page.getByText("1 rounds", { exact: true }).first()).toBeVisible();
+
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain("may not be able to rejoin");
+    await dialog.dismiss();
+  });
+  await page.getByRole("button", { name: "Leave room" }).click();
+  await expect(page.getByRole("heading", { name: "The room is open" })).toBeVisible();
 });
 
 test("admin dashboard rejects a wrong password and aggregates game information", async ({ page }) => {
@@ -149,7 +156,20 @@ test("three players complete a round and reach final scores", async ({ browser, 
     await expect(bob.getByRole("heading", { name: "Answer in secret" })).toBeVisible();
     await expect(bob.locator(".answer-card h2")).toHaveText(prompts[1]);
 
-    for (const [playerPage, answer] of [[page, "Host answer"], [bob, "Bob answer"], [chandra, "Chandra answer"]]) {
+    await page.getByLabel("Your answer").fill("Host answer");
+    await page.getByRole("button", { name: /Lock answer/ }).click();
+    await expect(page.getByRole("heading", { name: "Answer locked" })).toBeVisible();
+    await expect(page.locator(".locked-choice")).toContainText("Host answer");
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Answer locked" })).toBeVisible();
+    await expect(page.locator(".locked-choice")).toContainText("Host answer");
+    await page.getByRole("button", { name: "Edit answer" }).click();
+    await expect(page.getByLabel("Your answer")).toHaveValue("Host answer");
+    await page.getByLabel("Your answer").fill("Revised host answer");
+    await page.getByRole("button", { name: /Lock answer/ }).click();
+
+    for (const [playerPage, answer] of [[bob, "Bob answer"], [chandra, "Chandra answer"]]) {
       await playerPage.getByLabel("Your answer").fill(answer);
       await playerPage.getByRole("button", { name: /Lock answer/ }).click();
     }
@@ -164,6 +184,12 @@ test("three players complete a round and reach final scores", async ({ browser, 
     )));
 
     await suspect(page, "Bob").click();
+    await page.getByRole("button", { name: /Lock accusation/ }).click();
+    await expect(page.getByRole("heading", { name: "Vote locked" })).toBeVisible();
+    await expect(page.locator(".locked-choice")).toContainText("Bob");
+    await page.getByRole("button", { name: "Change vote" }).click();
+    await expect(suspect(page, "Bob")).toHaveAttribute("aria-pressed", "true");
+    await suspect(page, "Chandra").click();
     await page.getByRole("button", { name: /Lock accusation/ }).click();
     await suspect(bob, "Host").click();
     await bob.getByRole("button", { name: /Lock accusation/ }).click();

@@ -455,8 +455,13 @@ components:
           type: string
         answer_locked:
           type: boolean
+        your_answer:
+          type: string
+          maxLength: 500
         vote_locked:
           type: boolean
+        your_vote:
+          type: string
         real_question:
           type: string
         answers:

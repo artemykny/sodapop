@@ -33,10 +33,35 @@ test("lock events preserve a coalesced roster update", () => {
     type: "answer_locked",
     payload: {
       version: 2,
+      your_answer: "My answer",
       players: [{ id: "one", connected: true }],
     },
   });
 
   assert.equal(state.answer_locked, true);
+  assert.equal(state.your_answer, "My answer");
   assert.equal(state.players[0].connected, true);
+
+  const unlocked = applyRoomEvent(state, {
+    type: "answer_unlocked",
+    payload: { version: 3, players: state.players },
+  });
+  assert.equal(unlocked.answer_locked, false);
+  assert.equal(unlocked.your_answer, undefined);
+});
+
+test("vote lock events retain only the current player's target", () => {
+  const state = applyRoomEvent({ ...lobby, phase: "voting" }, {
+    type: "vote_locked",
+    payload: { version: 2, your_vote: "two", players: lobby.players },
+  });
+  assert.equal(state.vote_locked, true);
+  assert.equal(state.your_vote, "two");
+
+  const unlocked = applyRoomEvent(state, {
+    type: "vote_unlocked",
+    payload: { version: 3, players: lobby.players },
+  });
+  assert.equal(unlocked.vote_locked, false);
+  assert.equal(unlocked.your_vote, undefined);
 });

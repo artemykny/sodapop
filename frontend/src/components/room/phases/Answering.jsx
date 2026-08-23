@@ -1,19 +1,40 @@
 import { useState } from "react";
 
 export function Answering({ state, send, isHost }) {
-  const [answer, setAnswer] = useState("");
+  const [answer, setAnswer] = useState(state.your_answer || "");
   const [submitting, setSubmitting] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
 
   function submitAnswer(event) {
     event.preventDefault();
     if (!answer.trim()) return;
-    if (send("submit_answer", { answer: answer.trim() }, (accepted) => {
-      if (!accepted) setSubmitting(false);
-    })) setSubmitting(true);
+    if (send("submit_answer", { answer: answer.trim() }, () => setSubmitting(false))) setSubmitting(true);
+  }
+
+  function unlockAnswer() {
+    if (send("unlock_answer", {}, () => setUnlocking(false))) setUnlocking(true);
+  }
+
+  function skipToDiscussion() {
+    if (window.confirm("End answering now? Players who have not locked an answer will be left out of this round.")) {
+      send("advance");
+    }
   }
 
   if (state.answer_locked) {
-    return <div className="locked-card"><div className="lock-seal">✓</div><h2>Answer locked</h2><p>Keep a straight face. The rest of the room is still writing.</p>{isHost && <button className="text-button" onClick={() => send("advance")}>Skip to discussion →</button>}</div>;
+    return (
+      <div className="locked-card">
+        <div className="lock-seal">✓</div>
+        <h2>Answer locked</h2>
+        <p>Only you can see this answer until discussion begins.</p>
+        <div className="locked-choice">
+          <span>Your question</span><strong>{state.your_prompt}</strong>
+          <span>Your answer</span><blockquote>“{state.your_answer}”</blockquote>
+        </div>
+        <button className="secondary-button" onClick={unlockAnswer} disabled={unlocking}>{unlocking ? "Unlocking…" : "Edit answer"}</button>
+        {isHost && <button className="text-button" onClick={skipToDiscussion}>Skip to discussion →</button>}
+      </div>
+    );
   }
 
   return (

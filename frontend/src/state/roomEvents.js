@@ -2,9 +2,11 @@ const incrementalEvents = new Set([
   "players_updated",
   "round_started",
   "answer_locked",
+  "answer_unlocked",
   "discussion_started",
   "voting_started",
   "vote_locked",
+  "vote_unlocked",
   "round_result",
   "game_finished",
 ]);
@@ -29,19 +31,25 @@ export function applyRoomEvent(state, message) {
         your_prompt: payload.your_prompt,
         players: payload.players,
         answer_locked: false,
+        your_answer: undefined,
         vote_locked: false,
+        your_vote: undefined,
         real_question: undefined,
         answers: undefined,
         result: null,
       };
     case "answer_locked":
-      return { ...next, answer_locked: true, players: payload.players };
+      return { ...next, answer_locked: true, your_answer: payload.your_answer, players: payload.players };
+    case "answer_unlocked":
+      return { ...next, answer_locked: false, your_answer: undefined, players: payload.players };
     case "discussion_started":
       return phaseState(next, "discussion", payload);
     case "voting_started":
       return phaseState(next, "voting", payload);
     case "vote_locked":
-      return { ...next, vote_locked: true, players: payload.players };
+      return { ...next, vote_locked: true, your_vote: payload.your_vote, players: payload.players };
+    case "vote_unlocked":
+      return { ...next, vote_locked: false, your_vote: undefined, players: payload.players };
     case "round_result":
       return resultState(next, "round_result", payload);
     case "game_finished":
@@ -62,7 +70,9 @@ function phaseState(state, phase, payload) {
     players: payload.players,
     your_prompt: undefined,
     answer_locked: false,
+    your_answer: undefined,
     vote_locked: false,
+    your_vote: undefined,
     result: null,
   };
 }
@@ -79,6 +89,8 @@ function resultState(state, phase, payload) {
     players: payload.players,
     your_prompt: undefined,
     answer_locked: false,
+    your_answer: undefined,
     vote_locked: false,
+    your_vote: undefined,
   };
 }

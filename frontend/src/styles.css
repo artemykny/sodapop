@@ -174,6 +174,15 @@
   .lock-seal.accusation { background: var(--coral); color: white; }
   .locked-card h2 { font-size: 2.3rem; margin-bottom: 0.6rem; }
   .locked-card p { color: var(--muted); line-height: 1.6; }
+  .locked-choice { margin: 1.5rem 0; padding: 1.1rem; display: grid; gap: 0.45rem; border: 1px solid var(--line); border-radius: 0.8rem; background: var(--paper); text-align: left; }
+  .locked-choice span { margin-top: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.58rem; font-weight: 850; }
+  .locked-choice span:first-child { margin-top: 0; }
+  .locked-choice strong { font-size: 1rem; line-height: 1.4; }
+  .locked-choice blockquote { margin: 0; font-family: Georgia, serif; font-size: 1.2rem; line-height: 1.45; overflow-wrap: anywhere; }
+  .accusation-choice { text-align: center; }
+  .accusation-choice strong { font-size: 1.5rem; }
+  .locked-card > .secondary-button { width: 100%; justify-content: center; }
+  .locked-card > .text-button { display: block; margin: 0.65rem auto 0; }
   .reveal-question { max-width: 55rem; border-left: 5px solid var(--coral); padding-left: 1.4rem; }
   .answer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.9rem; margin: 1.5rem 0 2rem; }
   .revealed-answer { min-height: 9rem; border: 1px solid var(--line); border-radius: 0.85rem; padding: 1rem; background: rgba(255,253,247,0.72); display: grid; grid-template-columns: auto 1fr; gap: 0.8rem; }
@@ -181,6 +190,7 @@
   .revealed-answer p { grid-column: 2; font-family: Georgia, serif; font-size: 1.15rem; line-height: 1.4; margin: 0; }
   .revealed-answer strong { grid-column: 2; align-self: end; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; }
   .phase-intro { color: var(--muted); max-width: 34rem; line-height: 1.6; margin-bottom: 1.5rem; }
+  .phase-empty { margin: 1.5rem 0 2rem; padding: 1rem; border: 1px dashed var(--line); border-radius: 0.8rem; color: var(--muted); text-align: center; }
   .suspect-grid { display: grid; grid-template-columns: repeat(3, minmax(8rem, 1fr)); gap: 0.8rem; margin-bottom: 2rem; }
   .suspect-card { border: 1px solid var(--line); background: rgba(255,253,247,0.72); border-radius: 0.9rem; padding: 1.1rem; display: grid; justify-items: start; gap: 0.8rem; color: var(--ink); text-align: left; transition: transform 150ms, border-color 150ms, background 150ms; }
   .suspect-card:hover { transform: translateY(-3px); border-color: var(--ink); }

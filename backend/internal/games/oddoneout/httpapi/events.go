@@ -30,8 +30,10 @@ type phaseStartedPayload struct {
 }
 
 type lockedPayload struct {
-	Version uint64        `json:"version"`
-	Players []game.Player `json:"players"`
+	Version    uint64        `json:"version"`
+	Players    []game.Player `json:"players"`
+	YourAnswer string        `json:"your_answer,omitempty"`
+	YourVote   string        `json:"your_vote,omitempty"`
 }
 
 type roundResultPayload struct {
@@ -74,10 +76,22 @@ func roomUpdate(previous *game.View, current game.View) (serverMessage, bool) {
 		}
 	}
 	if current.AnswerLocked != previous.AnswerLocked {
-		return serverMessage{Type: "answer_locked", Payload: lockedPayload{Version: current.Version, Players: current.Players}}, true
+		eventType := "answer_locked"
+		if !current.AnswerLocked {
+			eventType = "answer_unlocked"
+		}
+		return serverMessage{Type: eventType, Payload: lockedPayload{
+			Version: current.Version, Players: current.Players, YourAnswer: current.YourAnswer,
+		}}, true
 	}
 	if current.VoteLocked != previous.VoteLocked {
-		return serverMessage{Type: "vote_locked", Payload: lockedPayload{Version: current.Version, Players: current.Players}}, true
+		eventType := "vote_locked"
+		if !current.VoteLocked {
+			eventType = "vote_unlocked"
+		}
+		return serverMessage{Type: eventType, Payload: lockedPayload{
+			Version: current.Version, Players: current.Players, YourVote: current.YourVote,
+		}}, true
 	}
 	if !slices.Equal(current.Players, previous.Players) {
 		return serverMessage{Type: "players_updated", Payload: playersPayload(current)}, true

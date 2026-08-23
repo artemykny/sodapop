@@ -53,8 +53,28 @@ func TestRoomRoundFlowAndSecretViews(t *testing.T) {
 	if err := room.SubmitAnswer(host.PlayerID, "host answer"); err != nil {
 		t.Fatalf("SubmitAnswer(host) error = %v", err)
 	}
+	lockedAnswer := mustView(t, room, host.PlayerID)
+	if !lockedAnswer.AnswerLocked || lockedAnswer.YourAnswer != "host answer" {
+		t.Fatalf("locked answer view = %+v", lockedAnswer)
+	}
+	otherAnswerView := mustView(t, room, second.PlayerID)
+	if otherAnswerView.YourAnswer != "" || strings.Contains(mustJSON(t, otherAnswerView), "host answer") {
+		t.Fatalf("other player saw hidden answer: %+v", otherAnswerView)
+	}
 	if err := room.SubmitAnswer(host.PlayerID, "changed"); !errors.Is(err, ErrAlreadyLocked) {
 		t.Fatalf("second SubmitAnswer() error = %v, want ErrAlreadyLocked", err)
+	}
+	if err := room.UnlockAnswer(host.PlayerID); err != nil {
+		t.Fatalf("UnlockAnswer(host) error = %v", err)
+	}
+	if unlocked := mustView(t, room, host.PlayerID); unlocked.AnswerLocked || unlocked.YourAnswer != "" {
+		t.Fatalf("unlocked answer view = %+v", unlocked)
+	}
+	if err := room.UnlockAnswer(host.PlayerID); !errors.Is(err, ErrAnswerNotLocked) {
+		t.Fatalf("second UnlockAnswer() error = %v, want ErrAnswerNotLocked", err)
+	}
+	if err := room.SubmitAnswer(host.PlayerID, "changed host answer"); err != nil {
+		t.Fatalf("resubmit answer error = %v", err)
 	}
 	if err := room.SubmitAnswer(second.PlayerID, "second answer"); err != nil {
 		t.Fatalf("SubmitAnswer(second) error = %v", err)
@@ -72,6 +92,25 @@ func TestRoomRoundFlowAndSecretViews(t *testing.T) {
 	}
 	if err := room.CastVote(host.PlayerID, second.PlayerID); err != nil {
 		t.Fatalf("CastVote(host) error = %v", err)
+	}
+	lockedVote := mustView(t, room, host.PlayerID)
+	if !lockedVote.VoteLocked || lockedVote.YourVote != second.PlayerID {
+		t.Fatalf("locked vote view = %+v", lockedVote)
+	}
+	if otherVote := mustView(t, room, second.PlayerID); otherVote.YourVote != "" {
+		t.Fatalf("other player saw hidden vote: %+v", otherVote)
+	}
+	if err := room.UnlockVote(host.PlayerID); err != nil {
+		t.Fatalf("UnlockVote(host) error = %v", err)
+	}
+	if unlocked := mustView(t, room, host.PlayerID); unlocked.VoteLocked || unlocked.YourVote != "" {
+		t.Fatalf("unlocked vote view = %+v", unlocked)
+	}
+	if err := room.UnlockVote(host.PlayerID); !errors.Is(err, ErrVoteNotLocked) {
+		t.Fatalf("second UnlockVote() error = %v, want ErrVoteNotLocked", err)
+	}
+	if err := room.CastVote(host.PlayerID, second.PlayerID); err != nil {
+		t.Fatalf("CastVote(host again) error = %v", err)
 	}
 	if err := room.CastVote(second.PlayerID, host.PlayerID); err != nil {
 		t.Fatalf("CastVote(second) error = %v", err)
@@ -193,4 +232,13 @@ func mustView(t *testing.T, room *Room, playerID string) View {
 		t.Fatalf("View(%q) error = %v", playerID, err)
 	}
 	return view
+}
+
+func mustJSON(t *testing.T, value any) string {
+	t.Helper()
+	serialized, err := json.Marshal(value)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	return string(serialized)
 }

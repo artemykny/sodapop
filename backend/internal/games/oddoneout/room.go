@@ -219,6 +219,23 @@ func (r *Room) SubmitAnswer(playerID, answer string) error {
 	return nil
 }
 
+func (r *Room) UnlockAnswer(playerID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.Phase != PhaseAnswering || r.Current == nil {
+		return ErrInvalidPhase
+	}
+	if _, ok := r.playersByID[playerID]; !ok {
+		return ErrPlayerNotFound
+	}
+	if _, exists := r.Current.Answers[playerID]; !exists {
+		return ErrAnswerNotLocked
+	}
+	delete(r.Current.Answers, playerID)
+	r.changedLocked()
+	return nil
+}
+
 func (r *Room) CastVote(playerID, targetID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -241,6 +258,23 @@ func (r *Room) CastVote(playerID, targetID string) error {
 	if len(r.Current.Votes) == len(r.Players) {
 		r.finishVotingLocked()
 	}
+	r.changedLocked()
+	return nil
+}
+
+func (r *Room) UnlockVote(playerID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.Phase != PhaseVoting || r.Current == nil {
+		return ErrInvalidPhase
+	}
+	if _, ok := r.playersByID[playerID]; !ok {
+		return ErrPlayerNotFound
+	}
+	if _, exists := r.Current.Votes[playerID]; !exists {
+		return ErrVoteNotLocked
+	}
+	delete(r.Current.Votes, playerID)
 	r.changedLocked()
 	return nil
 }
@@ -309,14 +343,14 @@ func (r *Room) View(playerID string) (View, error) {
 		} else {
 			view.YourPrompt = question.Real
 		}
-		_, view.AnswerLocked = r.Current.Answers[playerID]
+		view.YourAnswer, view.AnswerLocked = r.Current.Answers[playerID]
 	}
 	if r.Phase == PhaseDiscussion || r.Phase == PhaseVoting || r.Phase == PhaseRoundResult || r.Phase == PhaseFinished {
 		view.RealQuestion = r.Questions[r.Current.QuestionIndex].Real
 		view.Answers = r.answersLocked()
 	}
 	if r.Phase == PhaseVoting {
-		_, view.VoteLocked = r.Current.Votes[playerID]
+		view.YourVote, view.VoteLocked = r.Current.Votes[playerID]
 	}
 	if r.Phase == PhaseRoundResult || r.Phase == PhaseFinished {
 		view.Result = cloneResult(r.Current.Result)

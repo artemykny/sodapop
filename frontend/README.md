@@ -13,6 +13,10 @@ when creating a room. Hosts may alternatively submit custom question pairs as
 write-only room input; question pairs are never bundled into the app or returned
 as global room state.
 
+During answering and voting, players can review and unlock only their own
+submitted choice while the phase remains open. Refreshing or reconnecting
+restores that private locked state from the backend.
+
 ## Source layout
 
 - `src/api/`: coordinator and game-server requests.

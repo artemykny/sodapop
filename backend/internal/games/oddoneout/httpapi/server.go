@@ -355,6 +355,8 @@ func executeCommand(room *game.Room, playerID string, message clientMessage) err
 			return errors.New("submit_answer payload is invalid")
 		}
 		return room.SubmitAnswer(playerID, payload.Answer)
+	case "unlock_answer":
+		return room.UnlockAnswer(playerID)
 	case "cast_vote":
 		var payload struct {
 			PlayerID string `json:"player_id"`
@@ -363,6 +365,8 @@ func executeCommand(room *game.Room, playerID string, message clientMessage) err
 			return errors.New("cast_vote payload is invalid")
 		}
 		return room.CastVote(playerID, payload.PlayerID)
+	case "unlock_vote":
+		return room.UnlockVote(playerID)
 	case "advance":
 		return room.Advance(playerID)
 	case "stop_game":
@@ -449,7 +453,8 @@ func writeGameError(w http.ResponseWriter, err error) {
 	case errors.Is(err, game.ErrForbidden), errors.Is(err, game.ErrInvalidPassword):
 		status = http.StatusForbidden
 	case errors.Is(err, game.ErrRoomFull), errors.Is(err, game.ErrNameTaken),
-		errors.Is(err, game.ErrInvalidPhase), errors.Is(err, game.ErrAlreadyLocked), errors.Is(err, game.ErrAlreadyVoted):
+		errors.Is(err, game.ErrInvalidPhase), errors.Is(err, game.ErrAlreadyLocked), errors.Is(err, game.ErrAlreadyVoted),
+		errors.Is(err, game.ErrAnswerNotLocked), errors.Is(err, game.ErrVoteNotLocked):
 		status = http.StatusConflict
 	}
 	writeProblem(w, status, errorCode(err), err.Error())
@@ -475,6 +480,10 @@ func errorCode(err error) string {
 		return "answer_already_locked"
 	case errors.Is(err, game.ErrAlreadyVoted):
 		return "vote_already_locked"
+	case errors.Is(err, game.ErrAnswerNotLocked):
+		return "answer_not_locked"
+	case errors.Is(err, game.ErrVoteNotLocked):
+		return "vote_not_locked"
 	default:
 		return "invalid_command"
 	}

@@ -29,27 +29,33 @@ Supported commands:
 | --- | --- | --- |
 | `start_game` | none | Host in the lobby |
 | `submit_answer` | `{"answer":"..."}` | Any player during answering |
+| `unlock_answer` | none | A player with a locked answer during answering |
 | `cast_vote` | `{"player_id":"ply_..."}` | Any player during voting |
+| `unlock_vote` | none | A player with a locked vote during voting |
 | `advance` | none | Host during an active round |
 | `stop_game` | none | Host before the game finishes |
 | `ping` | none | Any authenticated player |
 
-Answers and votes lock on their first accepted submission.
+Answers and votes lock on submission but remain editable until the server moves
+to the next phase. Unlocking removes the current choice; the player must submit
+again before it counts.
 
 ## Server messages
 
 The server owns the authoritative room. On connection it emits one personalized
 `sync` containing the player's current room projection. After that it sends only
-incremental public events:
+incremental player-safe events:
 
 | Type | Meaning |
 | --- | --- |
 | `players_updated` | Public roster, connection, or score data changed |
 | `round_started` | A new round began; includes only this player's prompt |
 | `answer_locked` | This player's answer was accepted |
+| `answer_unlocked` | This player's answer was unlocked |
 | `discussion_started` | The real question and submitted answers became public |
 | `voting_started` | Voting opened |
 | `vote_locked` | This player's vote was accepted |
+| `vote_unlocked` | This player's vote was unlocked |
 | `round_result` | The imposter, counts, and updated scores became public |
 | `game_finished` | The game ended and final scores became public |
 
@@ -66,9 +72,11 @@ Command outcomes remain separate:
   `{code, message}` payload.
 
 The personalized projection deliberately varies by phase and player. During
-answering, `round_started` contains only `your_prompt`. The real question and
-submitted answers appear only once discussion starts. The imposter and vote
-counts appear only in `round_result` and a reconnecting player's finished sync.
+answering, `round_started` contains only `your_prompt`; a player may also receive
+their own `your_answer` after locking. During voting, a player may receive only
+their own `your_vote`. The real question and all submitted answers appear only
+once discussion starts. The imposter and vote counts appear only in
+`round_result` and a reconnecting player's finished sync.
 
 Clients calculate a displayed countdown from absolute `deadline` timestamps.
 The server remains authoritative for every phase transition and locked action.

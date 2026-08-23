@@ -26,6 +26,7 @@ func TestRoomUpdateProjectsOnlyPublicChanges(t *testing.T) {
 	locked := hiddenChange
 	locked.Version = 3
 	locked.AnswerLocked = true
+	locked.YourAnswer = "My answer"
 	locked.Players = []game.Player{{ID: "one", DisplayName: "One", Connected: true}}
 	message, send = roomUpdate(&hiddenChange, locked)
 	if !send || message.Type != "answer_locked" {
@@ -35,9 +36,21 @@ func TestRoomUpdateProjectsOnlyPublicChanges(t *testing.T) {
 	if len(lockedUpdate.Players) != 1 || !lockedUpdate.Players[0].Connected {
 		t.Fatalf("answer lock dropped coalesced roster update: %+v", lockedUpdate)
 	}
+	if lockedUpdate.YourAnswer != "My answer" {
+		t.Fatalf("answer lock dropped player's answer: %+v", lockedUpdate)
+	}
+
+	unlocked := locked
+	unlocked.Version = 4
+	unlocked.AnswerLocked = false
+	unlocked.YourAnswer = ""
+	message, send = roomUpdate(&locked, unlocked)
+	if !send || message.Type != "answer_unlocked" {
+		t.Fatalf("answer unlock update = %+v, %v", message, send)
+	}
 
 	discussion := locked
-	discussion.Version = 4
+	discussion.Version = 5
 	discussion.Phase = game.PhaseDiscussion
 	discussion.YourPrompt = ""
 	discussion.RealQuestion = "revealed question"
@@ -59,5 +72,22 @@ func TestRoomUpdateProjectsOnlyPublicChanges(t *testing.T) {
 	}
 	if update := message.Payload.(phaseStartedPayload); update.Round != 2 {
 		t.Fatalf("coalesced voting round = %d, want 2", update.Round)
+	}
+
+	voteLocked := voting
+	voteLocked.Version = 15
+	voteLocked.VoteLocked = true
+	voteLocked.YourVote = "player-two"
+	message, send = roomUpdate(&voting, voteLocked)
+	if !send || message.Type != "vote_locked" || message.Payload.(lockedPayload).YourVote != "player-two" {
+		t.Fatalf("vote lock update = %+v, %v", message, send)
+	}
+	voteUnlocked := voteLocked
+	voteUnlocked.Version = 16
+	voteUnlocked.VoteLocked = false
+	voteUnlocked.YourVote = ""
+	message, send = roomUpdate(&voteLocked, voteUnlocked)
+	if !send || message.Type != "vote_unlocked" {
+		t.Fatalf("vote unlock update = %+v, %v", message, send)
 	}
 }

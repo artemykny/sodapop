@@ -173,8 +173,10 @@ components:
           type: string
           minLength: 1
           maxLength: 60
-        game_id:
-          type: string
+        game_ids:
+          type: array
+          items:
+            type: string
         game_name:
           type: string
     AdminOverview:

@@ -109,13 +109,15 @@ func (s *Server) adminStats(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	writeJSON(w, http.StatusOK, adminapi.GameServerStats{
-		Game: adminapi.Game{ID: "oddoneout", Name: "Odd One Out"},
-		Rooms: adminapi.Rooms{
-			Total: stats.RoomsTotal, Active: stats.RoomsActive,
-			Finished: stats.RoomsFinished, ByPhase: byPhase,
-		},
-		Players:       adminapi.Players{Total: stats.PlayersTotal, Connected: stats.PlayersConnected},
-		QuestionPacks: packStats,
+		Games: []adminapi.GameStats{{
+			Game: adminapi.Game{ID: "oddoneout", Name: "Odd One Out"},
+			Rooms: adminapi.Rooms{
+				Total: stats.RoomsTotal, Active: stats.RoomsActive,
+				Finished: stats.RoomsFinished, ByPhase: byPhase,
+			},
+			Players:       adminapi.Players{Total: stats.PlayersTotal, Connected: stats.PlayersConnected},
+			QuestionPacks: packStats,
+		}},
 	})
 }
 

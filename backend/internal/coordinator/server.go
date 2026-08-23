@@ -223,32 +223,33 @@ func (s *Server) adminOverview(w http.ResponseWriter, r *http.Request) {
 			overview.Totals.UnavailableServers++
 			continue
 		}
-		stats := result.stats
-		aggregate := aggregates[stats.Game.ID]
-		if aggregate == nil {
-			aggregate = &gameAggregate{
-				overview: adminapi.GameOverview{
-					Game: stats.Game, Rooms: adminapi.Rooms{ByPhase: make(map[string]int)},
-				},
-				packs: make(map[string]adminapi.QuestionPack),
+		for _, stats := range result.stats.Games {
+			aggregate := aggregates[stats.Game.ID]
+			if aggregate == nil {
+				aggregate = &gameAggregate{
+					overview: adminapi.GameOverview{
+						Game: stats.Game, Rooms: adminapi.Rooms{ByPhase: make(map[string]int)},
+					},
+					packs: make(map[string]adminapi.QuestionPack),
+				}
+				aggregates[stats.Game.ID] = aggregate
 			}
-			aggregates[stats.Game.ID] = aggregate
+			aggregate.overview.ServerInstances++
+			aggregate.overview.Rooms.Total += stats.Rooms.Total
+			aggregate.overview.Rooms.Active += stats.Rooms.Active
+			aggregate.overview.Rooms.Finished += stats.Rooms.Finished
+			for phase, count := range stats.Rooms.ByPhase {
+				aggregate.overview.Rooms.ByPhase[phase] += count
+			}
+			aggregate.overview.Players.Total += stats.Players.Total
+			aggregate.overview.Players.Connected += stats.Players.Connected
+			for _, pack := range stats.QuestionPacks {
+				aggregate.packs[pack.ID] = pack
+			}
+			overview.Totals.TotalRooms += stats.Rooms.Total
+			overview.Totals.ActiveRooms += stats.Rooms.Active
+			overview.Totals.ConnectedPlayers += stats.Players.Connected
 		}
-		aggregate.overview.ServerInstances++
-		aggregate.overview.Rooms.Total += stats.Rooms.Total
-		aggregate.overview.Rooms.Active += stats.Rooms.Active
-		aggregate.overview.Rooms.Finished += stats.Rooms.Finished
-		for phase, count := range stats.Rooms.ByPhase {
-			aggregate.overview.Rooms.ByPhase[phase] += count
-		}
-		aggregate.overview.Players.Total += stats.Players.Total
-		aggregate.overview.Players.Connected += stats.Players.Connected
-		for _, pack := range stats.QuestionPacks {
-			aggregate.packs[pack.ID] = pack
-		}
-		overview.Totals.TotalRooms += stats.Rooms.Total
-		overview.Totals.ActiveRooms += stats.Rooms.Active
-		overview.Totals.ConnectedPlayers += stats.Players.Connected
 	}
 
 	overview.Games = make([]adminapi.GameOverview, 0, len(aggregates))
@@ -297,17 +298,40 @@ func (s *Server) fetchAdminStats(parent context.Context, authorization, serverUR
 		return adminStatsResult{instance: instance}
 	}
 	instance.Available = true
-	instance.GameID = stats.Game.ID
+	instance.GameIDs = make([]string, 0, len(stats.Games))
+	for _, gameStats := range stats.Games {
+		instance.GameIDs = append(instance.GameIDs, gameStats.Game.ID)
+	}
+	sort.Strings(instance.GameIDs)
 	return adminStatsResult{instance: instance, stats: &stats}
 }
 
 func validAdminStats(stats adminapi.GameServerStats) bool {
-	if strings.TrimSpace(stats.Game.ID) == "" || strings.TrimSpace(stats.Game.Name) == "" ||
-		stats.Rooms.Total < 0 || stats.Rooms.Active < 0 || stats.Rooms.Finished < 0 ||
-		stats.Rooms.Active+stats.Rooms.Finished != stats.Rooms.Total ||
-		stats.Players.Total < 0 || stats.Players.Connected < 0 || stats.Players.Connected > stats.Players.Total {
+	if len(stats.Games) == 0 {
 		return false
 	}
+	seenGames := make(map[string]struct{}, len(stats.Games))
+	for _, gameStats := range stats.Games {
+		gameID := strings.TrimSpace(gameStats.Game.ID)
+		if gameID == "" || strings.TrimSpace(gameStats.Game.Name) == "" ||
+			gameStats.Rooms.Total < 0 || gameStats.Rooms.Active < 0 || gameStats.Rooms.Finished < 0 ||
+			gameStats.Rooms.Active+gameStats.Rooms.Finished != gameStats.Rooms.Total ||
+			gameStats.Players.Total < 0 || gameStats.Players.Connected < 0 ||
+			gameStats.Players.Connected > gameStats.Players.Total {
+			return false
+		}
+		if _, duplicate := seenGames[gameID]; duplicate {
+			return false
+		}
+		seenGames[gameID] = struct{}{}
+		if !validGameStats(gameStats) {
+			return false
+		}
+	}
+	return true
+}
+
+func validGameStats(stats adminapi.GameStats) bool {
 	roomsByPhase := 0
 	for _, count := range stats.Rooms.ByPhase {
 		if count < 0 {

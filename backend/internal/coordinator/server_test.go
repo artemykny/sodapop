@@ -77,31 +77,34 @@ func TestAdminOverviewAggregatesMultipleGamesAndUnavailableServers(t *testing.T)
 			writeJSON(w, http.StatusOK, stats)
 		}))
 	}
-	oddOneOut := gameServer(adminapi.GameServerStats{
-		Game:    adminapi.Game{ID: "oddoneout", Name: "Odd One Out"},
-		Rooms:   adminapi.Rooms{Total: 3, Active: 2, Finished: 1, ByPhase: map[string]int{"lobby": 2, "finished": 1}},
-		Players: adminapi.Players{Total: 8, Connected: 5},
-		QuestionPacks: []adminapi.QuestionPack{{
-			ID: "classic", Name: "Classic mix", QuestionCount: 1,
-			Items: []adminapi.PackItem{{Fields: []adminapi.ContentField{{Label: "Question", Value: "A question"}}}},
-		}},
+	multiGameServer := gameServer(adminapi.GameServerStats{
+		Games: []adminapi.GameStats{
+			{
+				Game:    adminapi.Game{ID: "oddoneout", Name: "Odd One Out"},
+				Rooms:   adminapi.Rooms{Total: 3, Active: 2, Finished: 1, ByPhase: map[string]int{"lobby": 2, "finished": 1}},
+				Players: adminapi.Players{Total: 8, Connected: 5},
+				QuestionPacks: []adminapi.QuestionPack{{
+					ID: "classic", Name: "Classic mix", QuestionCount: 1,
+					Items: []adminapi.PackItem{{Fields: []adminapi.ContentField{{Label: "Question", Value: "A question"}}}},
+				}},
+			},
+			{
+				Game:    adminapi.Game{ID: "trivia", Name: "Trivia"},
+				Rooms:   adminapi.Rooms{Total: 4, Active: 4, ByPhase: map[string]int{"playing": 4}},
+				Players: adminapi.Players{Total: 20, Connected: 12},
+				QuestionPacks: []adminapi.QuestionPack{{
+					ID: "general", Name: "General knowledge", QuestionCount: 1,
+					Items: []adminapi.PackItem{{Fields: []adminapi.ContentField{{Label: "Question", Value: "Trivia question"}}}},
+				}},
+			},
+		},
 	})
-	t.Cleanup(oddOneOut.Close)
-	trivia := gameServer(adminapi.GameServerStats{
-		Game:    adminapi.Game{ID: "trivia", Name: "Trivia"},
-		Rooms:   adminapi.Rooms{Total: 4, Active: 4, ByPhase: map[string]int{"playing": 4}},
-		Players: adminapi.Players{Total: 20, Connected: 12},
-		QuestionPacks: []adminapi.QuestionPack{{
-			ID: "general", Name: "General knowledge", QuestionCount: 1,
-			Items: []adminapi.PackItem{{Fields: []adminapi.ContentField{{Label: "Question", Value: "Trivia question"}}}},
-		}},
-	})
-	t.Cleanup(trivia.Close)
+	t.Cleanup(multiGameServer.Close)
 	unavailable := httptest.NewServer(http.NotFoundHandler())
 	unavailableURL := unavailable.URL
 	unavailable.Close()
 
-	coordinator, err := New([]string{oddOneOut.URL, trivia.URL, unavailableURL}, nil, nil, nil, password)
+	coordinator, err := New([]string{multiGameServer.URL, unavailableURL}, nil, nil, nil, password)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -116,7 +119,7 @@ func TestAdminOverviewAggregatesMultipleGamesAndUnavailableServers(t *testing.T)
 	if err := json.NewDecoder(recorder.Body).Decode(&overview); err != nil {
 		t.Fatalf("decode overview: %v", err)
 	}
-	if overview.Totals.GameTypes != 2 || overview.Totals.ServerInstances != 3 || overview.Totals.UnavailableServers != 1 {
+	if overview.Totals.GameTypes != 2 || overview.Totals.ServerInstances != 2 || overview.Totals.UnavailableServers != 1 {
 		t.Fatalf("instance totals = %+v", overview.Totals)
 	}
 	if overview.Totals.TotalRooms != 7 || overview.Totals.ActiveRooms != 6 || overview.Totals.ConnectedPlayers != 17 {
@@ -125,8 +128,15 @@ func TestAdminOverviewAggregatesMultipleGamesAndUnavailableServers(t *testing.T)
 	if len(overview.Games) != 2 || overview.Games[0].ID != "oddoneout" || overview.Games[1].ID != "trivia" {
 		t.Fatalf("games = %+v", overview.Games)
 	}
-	if len(overview.Instances) != 3 || overview.Instances[0].URL == "" {
+	if len(overview.Instances) != 2 || overview.Instances[0].URL == "" {
 		t.Fatalf("instances = %+v", overview.Instances)
+	}
+	availableInstance := overview.Instances[0]
+	if !availableInstance.Available {
+		availableInstance = overview.Instances[1]
+	}
+	if len(availableInstance.GameIDs) != 2 || availableInstance.GameIDs[0] != "oddoneout" || availableInstance.GameIDs[1] != "trivia" {
+		t.Fatalf("available instance games = %+v", availableInstance.GameIDs)
 	}
 }
 

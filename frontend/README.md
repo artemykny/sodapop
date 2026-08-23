@@ -50,9 +50,11 @@ build time.
 Open `/admin` and paste the `ADMIN_PASSWORD` configured on the coordinator and
 all game servers. The password stays in browser memory only: it is not bundled,
 put in a URL, or written to local storage. The read-only dashboard aggregates
-game types, active rooms, connected players, phase counts, server health, and
-the complete readable contents of every built-in question pack across every
-configured game server. Public catalog and room APIs still expose metadata only.
+game types, active rooms, connected players, phase counts, and server health.
+General and per-game information have separate sidebar views. Each question pack
+opens in a dedicated scrollable modal so large packs do not expand the game page.
+One configured game server may report several games. Public catalog and room APIs
+still expose metadata only.
 
 ## End-to-end tests
 

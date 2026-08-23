@@ -87,18 +87,22 @@ type Players struct {
 	Connected int `json:"connected"`
 }
 
-type GameServerStats struct {
+type GameStats struct {
 	Game          Game           `json:"game"`
 	Rooms         Rooms          `json:"rooms"`
 	Players       Players        `json:"players"`
 	QuestionPacks []QuestionPack `json:"question_packs"`
 }
 
+type GameServerStats struct {
+	Games []GameStats `json:"games"`
+}
+
 type Instance struct {
-	URL       string `json:"url"`
-	GameID    string `json:"game_id,omitempty"`
-	Available bool   `json:"available"`
-	Error     string `json:"error,omitempty"`
+	URL       string   `json:"url"`
+	GameIDs   []string `json:"game_ids,omitempty"`
+	Available bool     `json:"available"`
+	Error     string   `json:"error,omitempty"`
 }
 
 type GameOverview struct {

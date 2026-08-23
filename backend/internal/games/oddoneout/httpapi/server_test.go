@@ -203,14 +203,16 @@ func TestAdminStatsRequireLongPassword(t *testing.T) {
 	if err := json.NewDecoder(response.Body).Decode(&stats); err != nil {
 		t.Fatalf("decode admin stats: %v", err)
 	}
-	if stats.Game.ID != "oddoneout" || stats.Rooms.Total != 1 || stats.Rooms.Active != 1 {
+	if len(stats.Games) != 1 || stats.Games[0].Game.ID != "oddoneout" ||
+		stats.Games[0].Rooms.Total != 1 || stats.Games[0].Rooms.Active != 1 {
 		t.Fatalf("admin stats = %+v", stats)
 	}
-	if len(stats.QuestionPacks) == 0 || stats.QuestionPacks[0].QuestionCount == 0 ||
-		len(stats.QuestionPacks[0].Items) != stats.QuestionPacks[0].QuestionCount {
-		t.Fatalf("question packs = %+v", stats.QuestionPacks)
+	gameStats := stats.Games[0]
+	if len(gameStats.QuestionPacks) == 0 || gameStats.QuestionPacks[0].QuestionCount == 0 ||
+		len(gameStats.QuestionPacks[0].Items) != gameStats.QuestionPacks[0].QuestionCount {
+		t.Fatalf("question packs = %+v", gameStats.QuestionPacks)
 	}
-	if got := stats.QuestionPacks[0].Items[0].Fields; len(got) != 2 || got[0].Value == "" || got[1].Value == "" {
+	if got := gameStats.QuestionPacks[0].Items[0].Fields; len(got) != 2 || got[0].Value == "" || got[1].Value == "" {
 		t.Fatalf("question fields = %+v", got)
 	}
 }

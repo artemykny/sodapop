@@ -28,13 +28,20 @@ test("admin dashboard rejects a wrong password and aggregates game information",
 
   await page.getByLabel("Admin password").fill(adminPassword);
   await page.getByRole("button", { name: "Open dashboard" }).click();
-  await expect(page.getByRole("heading", { name: "Operations overview" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "General overview" })).toBeVisible();
+  await page.getByRole("button", { name: /Odd One Out/ }).click();
   await expect(page.getByRole("heading", { name: "Odd One Out" })).toBeVisible();
   await expect(page.getByText("Classic mix", { exact: true })).toBeVisible();
   await expect(page.getByText("After hours", { exact: true })).toBeVisible();
+  await expect(page.getByText("What is the best pizza topping?", { exact: true })).toBeHidden();
+  await page.locator(".admin-pack-list > li").filter({ hasText: "Classic mix" }).getByRole("button", { name: "Open pack" }).click();
+  await expect(page.getByRole("dialog", { name: "Classic mix" })).toBeVisible();
   await expect(page.getByText("What is the best pizza topping?", { exact: true })).toBeVisible();
   await expect(page.getByText("What is the worst pizza topping?", { exact: true })).toBeVisible();
-  await expect(page.getByText("oddoneout", { exact: true }).last()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Classic mix" })).toBeHidden();
+  await page.getByRole("button", { name: /General/ }).click();
+  await expect(page.getByText("oddoneout", { exact: true })).toBeVisible();
 });
 
 test("room name autocomplete finds joinable rooms after a partial match", async ({ browser, page }, testInfo) => {

@@ -21,8 +21,9 @@ catalog or room-state responses.
 
 The read-only admin dashboard is served by the frontend at `/admin`. The
 coordinator authenticates the request and concurrently aggregates self-described
-statistics from every configured game server. This keeps the dashboard generic
-when more game modules and server instances are added.
+statistics from every configured game server. Each instance advertises a list of
+the games it hosts, so one server process can serve multiple game types while the
+dashboard and coordinator remain game-neutral.
 
 ## Requirements
 

@@ -1,4 +1,4 @@
-package game
+package oddoneout
 
 import (
 	"crypto/rand"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ak/skewa/backend/internal/identifier"
+	"github.com/ak/skewa/backend/internal/snapshot"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -323,15 +324,15 @@ func (r *Room) View(playerID string) (View, error) {
 	return view, nil
 }
 
-func (r *Room) Snapshot() (Snapshot, error) {
+func (r *Room) Snapshot() (snapshot.Snapshot, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	state, err := json.Marshal(r.persistedRoom)
 	if err != nil {
-		return Snapshot{}, fmt.Errorf("marshal room snapshot: %w", err)
+		return snapshot.Snapshot{}, fmt.Errorf("marshal room snapshot: %w", err)
 	}
-	return Snapshot{
-		RoomID: r.ID, RoomName: r.Name, Phase: r.Phase, Version: r.Version,
+	return snapshot.Snapshot{
+		RoomID: r.ID, RoomName: r.Name, Phase: string(r.Phase), Version: r.Version,
 		State: state, UpdatedAt: r.now().UTC(),
 	}, nil
 }

@@ -1,8 +1,8 @@
 # Skewa
 
-Skewa is a multiplayer odd-one-out deduction game. Players join a room, answer
-secretly assigned prompts, discuss the revealed answers, and vote to find the
-player who was answering a different question.
+Skewa is a multiplayer game application. Its first game, Odd One Out, has
+players answer secretly assigned prompts, discuss the revealed answers, and
+vote to find the player who was answering a different question.
 
 ## Technology Stack
 
@@ -31,8 +31,9 @@ player who was answering a different question.
 
 ## Project Structure
 
-- `backend/`: Go coordinator, game server, API contracts, migrations, and tests.
-- `backend/internal/questionpacks/`: backend-owned built-in question catalog.
+- `backend/`: Go coordinator, game modules, API contracts, migrations, and tests.
+- `backend/internal/games/oddoneout/`: Odd One Out domain, question catalog, and transport.
+- `backend/internal/snapshot/` and `backend/internal/storage/`: game-neutral persistence.
 - `frontend/`: modular React client for creating, joining, and playing games.
 - `game_design/`: Product scenarios and game rules.
 

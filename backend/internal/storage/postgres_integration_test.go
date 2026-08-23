@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ak/skewa/backend/internal/game"
+	"github.com/ak/skewa/backend/internal/snapshot"
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
@@ -41,32 +41,32 @@ func TestPostgresSaveAndLoad(t *testing.T) {
 	t.Cleanup(store.Close)
 
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	snapshot := game.Snapshot{
-		RoomID: "room_1", RoomName: "Friday Game", Phase: game.PhaseLobby,
+	value := snapshot.Snapshot{
+		RoomID: "room_1", RoomName: "Friday Game", Phase: "lobby",
 		Version: 2, State: json.RawMessage(`{"phase":"lobby"}`), UpdatedAt: now,
 	}
-	if err := store.Save(ctx, snapshot); err != nil {
+	if err := store.Save(ctx, value); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
-	loaded, err := store.Load(ctx, snapshot.RoomID)
+	loaded, err := store.Load(ctx, value.RoomID)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if loaded.RoomID != snapshot.RoomID || loaded.Version != snapshot.Version || !jsonEqual(loaded.State, snapshot.State) {
-		t.Fatalf("Load() = %+v, want %+v", loaded, snapshot)
+	if loaded.RoomID != value.RoomID || loaded.Version != value.Version || !jsonEqual(loaded.State, value.State) {
+		t.Fatalf("Load() = %+v, want %+v", loaded, value)
 	}
 
-	older := snapshot
+	older := value
 	older.Version = 1
 	older.State = json.RawMessage(`{"phase":"stale"}`)
 	if err := store.Save(ctx, older); err != nil {
 		t.Fatalf("Save(older) error = %v", err)
 	}
-	loaded, err = store.Load(ctx, snapshot.RoomID)
+	loaded, err = store.Load(ctx, value.RoomID)
 	if err != nil {
 		t.Fatalf("Load(after older save) error = %v", err)
 	}
-	if loaded.Version != 2 || !jsonEqual(loaded.State, snapshot.State) {
+	if loaded.Version != 2 || !jsonEqual(loaded.State, value.State) {
 		t.Fatalf("older snapshot replaced newer state: %+v", loaded)
 	}
 }

@@ -61,7 +61,17 @@ func TestCreateAndResolveRoom(t *testing.T) {
 }
 
 func TestQuestionPacks(t *testing.T) {
-	coordinator, err := New([]string{"http://game-server.test"}, nil, nil, nil)
+	gameServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/v1/question-packs" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"packs":[{"id":"classic","name":"Classic mix","description":"Classic","question_count":10}]}`))
+	}))
+	t.Cleanup(gameServer.Close)
+
+	coordinator, err := New([]string{gameServer.URL}, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

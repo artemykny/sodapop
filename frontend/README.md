@@ -1,6 +1,7 @@
 # Skewa Frontend
 
-React and Vite client for the Skewa multiplayer game.
+React and Vite client for the Skewa multiplayer game application. The current
+game is Odd One Out.
 
 Built-in question text is owned by the backend. The client loads only question
 pack metadata from the coordinator and sends the selected `question_pack` ID
@@ -26,7 +27,7 @@ frontend origin on both services:
 
 ```sh
 ALLOWED_ORIGINS=http://localhost:5173 GAME_SERVERS=http://localhost:8081 go run ./cmd/coordinator
-ALLOWED_ORIGINS=http://localhost:5173 go run ./cmd/game-server
+ALLOWED_ORIGINS=http://localhost:5173 go run ./cmd/oddoneout-server
 ```
 
 Then start the frontend:

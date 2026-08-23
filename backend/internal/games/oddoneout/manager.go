@@ -1,4 +1,4 @@
-package game
+package oddoneout
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ak/skewa/backend/internal/identifier"
+	"github.com/ak/skewa/backend/internal/snapshot"
 )
 
 var ErrRoomNotFound = errors.New("room not found")
@@ -19,13 +20,13 @@ type Manager struct {
 	rooms       map[string]*Room
 	roomNames   map[string]string
 	subscribers map[string]map[chan struct{}]struct{}
-	store       SnapshotStore
+	store       snapshot.Store
 	logger      *slog.Logger
 	ctx         context.Context
 	cancel      context.CancelFunc
 }
 
-func NewManager(store SnapshotStore, logger *slog.Logger) *Manager {
+func NewManager(store snapshot.Store, logger *slog.Logger) *Manager {
 	if logger == nil {
 		logger = slog.Default()
 	}

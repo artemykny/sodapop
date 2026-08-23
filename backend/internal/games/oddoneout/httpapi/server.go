@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ak/skewa/backend/internal/game"
+	game "github.com/ak/skewa/backend/internal/games/oddoneout"
+	"github.com/ak/skewa/backend/internal/games/oddoneout/questionpacks"
 	"github.com/ak/skewa/backend/internal/middleware"
-	"github.com/ak/skewa/backend/internal/questionpacks"
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 )

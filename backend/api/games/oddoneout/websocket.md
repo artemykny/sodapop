@@ -1,4 +1,4 @@
-# Game WebSocket Protocol
+# Odd One Out WebSocket Protocol
 
 Connect to `GET /v1/rooms/{room_id}/ws` after creating or joining a room.
 Browser clients authenticate with WebSocket subprotocols:

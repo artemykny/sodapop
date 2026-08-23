@@ -26,7 +26,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "go run ./cmd/game-server",
+      command: "go run ./cmd/oddoneout-server",
       cwd: "../backend",
       env: {
         PORT: String(gameServerPort),

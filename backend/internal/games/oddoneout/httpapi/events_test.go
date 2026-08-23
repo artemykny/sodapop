@@ -3,7 +3,7 @@ package httpapi
 import (
 	"testing"
 
-	"github.com/ak/skewa/backend/internal/game"
+	game "github.com/ak/skewa/backend/internal/games/oddoneout"
 )
 
 func TestRoomUpdateProjectsOnlyPublicChanges(t *testing.T) {

@@ -4,14 +4,14 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/game-server ./cmd/game-server && \
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/oddoneout-server ./cmd/oddoneout-server && \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/coordinator ./cmd/coordinator
 
 FROM alpine:3.22
 
 RUN apk add --no-cache ca-certificates && adduser -D -u 10001 skewa
-COPY --from=build /out/game-server /app/game-server
+COPY --from=build /out/oddoneout-server /app/oddoneout-server
 COPY --from=build /out/coordinator /app/coordinator
 USER skewa
 EXPOSE 8080 8081
-CMD ["/app/game-server"]
+CMD ["/app/oddoneout-server"]

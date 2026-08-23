@@ -1,13 +1,19 @@
 # Skewa Backend
 
-The backend contains two Go services:
+The backend contains a shared coordinator and a server for each game:
 
-- `game-server` owns active rooms, validates commands, advances timers, sends a
+- `oddoneout-server` owns Odd One Out rooms, validates commands, advances timers, sends a
   personalized WebSocket sync, then emits small player-specific events.
 - `coordinator` selects a game server when a room is created and resolves room
   names or IDs to that server.
 
-Built-in question packs live in `internal/questionpacks`. Both services expose
+All Odd One Out-specific code lives under `internal/games/oddoneout`: domain state,
+question packs, HTTP handlers, and WebSocket events. Shared coordination,
+identifiers, middleware, snapshot contracts, and PostgreSQL storage remain
+under `internal/` so another game can be added as a sibling module without
+depending on Skewa types.
+
+Built-in question packs live in `internal/games/oddoneout/questionpacks`. Both services expose
 pack metadata at `GET /v1/question-packs`, while the question text remains on
 the backend. Room creation accepts either a backend `question_pack` identifier
 or custom `questions` as write-only input. Question pairs are never returned in
@@ -24,7 +30,7 @@ catalog or room-state responses.
 Start a game server without persistence:
 
 ```sh
-go run ./cmd/game-server
+go run ./cmd/oddoneout-server
 ```
 
 Start a coordinator in another terminal:
@@ -38,12 +44,12 @@ migration is applied at startup.
 
 ```sh
 DATABASE_URL=postgres://skewa:skewa@localhost:5432/skewa?sslmode=disable \
-  go run ./cmd/game-server
+  go run ./cmd/oddoneout-server
 ```
 
 ## Configuration
 
-### Game server
+### Odd One Out server
 
 | Variable | Default | Description |
 | --- | --- | --- |
@@ -81,11 +87,11 @@ go test -race -short ./...
 
 ## Contracts
 
-- [`api/game-server.openapi.yaml`](api/game-server.openapi.yaml) describes the
-  game-server HTTP API.
+- [`api/games/oddoneout/openapi.yaml`](api/games/oddoneout/openapi.yaml) describes the
+  Odd One Out server HTTP API.
 - [`api/coordinator.openapi.yaml`](api/coordinator.openapi.yaml) describes the
   coordinator HTTP API.
-- [`api/websocket.md`](api/websocket.md) describes WebSocket authentication,
+- [`api/games/oddoneout/websocket.md`](api/games/oddoneout/websocket.md) describes WebSocket authentication,
   commands, and events.
 
 Room snapshots are currently written for durability and inspection. Automatic

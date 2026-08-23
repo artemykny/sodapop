@@ -1,8 +1,6 @@
-package game
+package oddoneout
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -146,17 +144,4 @@ type Credentials struct {
 	RoomID   string `json:"room_id"`
 	PlayerID string `json:"player_id"`
 	Token    string `json:"token"`
-}
-
-type Snapshot struct {
-	RoomID    string          `json:"room_id"`
-	RoomName  string          `json:"room_name"`
-	Phase     Phase           `json:"phase"`
-	Version   uint64          `json:"version"`
-	State     json.RawMessage `json:"state"`
-	UpdatedAt time.Time       `json:"updated_at"`
-}
-
-type SnapshotStore interface {
-	Save(ctx context.Context, snapshot Snapshot) error
 }

@@ -3,14 +3,14 @@ package questionpacks
 import (
 	"slices"
 
-	"github.com/ak/skewa/backend/internal/game"
+	"github.com/ak/skewa/backend/internal/games/oddoneout"
 )
 
 type Pack struct {
 	ID          string
 	Name        string
 	Description string
-	Questions   []game.Question
+	Questions   []oddoneout.Question
 }
 
 type Metadata struct {
@@ -25,7 +25,7 @@ var catalog = map[string]Pack{
 		ID:          "classic",
 		Name:        "Classic mix",
 		Description: "Easy to answer, surprisingly hard to explain.",
-		Questions: []game.Question{
+		Questions: []oddoneout.Question{
 			{Real: "What is the best pizza topping?", Fake: "What is the worst pizza topping?"},
 			{Real: "Where would you go for a perfect weekend?", Fake: "Where would you never spend a weekend?"},
 			{Real: "Which animal would make the best roommate?", Fake: "Which animal would make the worst roommate?"},
@@ -42,7 +42,7 @@ var catalog = map[string]Pack{
 		ID:          "after_dark",
 		Name:        "After hours",
 		Description: "A little sharper for groups who know each other.",
-		Questions: []game.Question{
+		Questions: []oddoneout.Question{
 			{Real: "What is a green flag on a first date?", Fake: "What is a red flag on a first date?"},
 			{Real: "What is worth lying about?", Fake: "What should you never lie about?"},
 			{Real: "What is the best excuse to leave a party?", Fake: "What is the worst excuse to leave a party?"},

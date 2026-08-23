@@ -8,14 +8,15 @@ import (
 	"time"
 
 	"github.com/ak/skewa/backend/internal/appserver"
-	"github.com/ak/skewa/backend/internal/game"
-	"github.com/ak/skewa/backend/internal/httpapi"
+	"github.com/ak/skewa/backend/internal/games/oddoneout"
+	"github.com/ak/skewa/backend/internal/games/oddoneout/httpapi"
+	"github.com/ak/skewa/backend/internal/snapshot"
 	"github.com/ak/skewa/backend/internal/storage"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	var snapshotStore game.SnapshotStore
+	var snapshotStore snapshot.Store
 	var postgres *storage.Postgres
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -32,7 +33,7 @@ func main() {
 		logger.Warn("DATABASE_URL is unset; room snapshots will not be persisted")
 	}
 
-	manager := game.NewManager(snapshotStore, logger)
+	manager := oddoneout.NewManager(snapshotStore, logger)
 	defer manager.Close()
 	origins := splitList(os.Getenv("ALLOWED_ORIGINS"))
 	handler := httpapi.New(manager, logger, origins).Handler()

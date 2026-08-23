@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ak/skewa/backend/internal/game"
+	game "github.com/ak/skewa/backend/internal/games/oddoneout"
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 )

@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/ak/skewa/backend/internal/middleware"
-	"github.com/ak/skewa/backend/internal/questionpacks"
 )
 
 const maxBodyBytes = 1 << 20
@@ -78,8 +77,26 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func (s *Server) questionPacks(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"packs": questionpacks.List()})
+func (s *Server) questionPacks(w http.ResponseWriter, r *http.Request) {
+	serverURL := s.gameServers[0]
+	request, err := http.NewRequestWithContext(r.Context(), http.MethodGet, serverURL+"/v1/question-packs", nil)
+	if err != nil {
+		writeProblem(w, http.StatusInternalServerError, "internal_error", "could not create game-server request")
+		return
+	}
+	response, err := s.client.Do(request)
+	if err != nil {
+		s.logger.Error("question catalog request failed", "game_server_url", serverURL, "error", err)
+		writeProblem(w, http.StatusBadGateway, "game_server_unavailable", "question catalog is unavailable")
+		return
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxBodyBytes+1))
+	if err != nil || len(body) > maxBodyBytes {
+		writeProblem(w, http.StatusBadGateway, "invalid_game_server_response", "game server returned an invalid response")
+		return
+	}
+	copyResponse(w, response.StatusCode, response.Header.Get("Content-Type"), body)
 }
 
 func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {

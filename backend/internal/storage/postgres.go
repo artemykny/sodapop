@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ak/skewa/backend/internal/game"
+	"github.com/ak/skewa/backend/internal/snapshot"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -46,7 +46,7 @@ func (p *Postgres) Migrate(ctx context.Context) error {
 	return nil
 }
 
-func (p *Postgres) Save(ctx context.Context, snapshot game.Snapshot) error {
+func (p *Postgres) Save(ctx context.Context, value snapshot.Snapshot) error {
 	_, err := p.pool.Exec(ctx, `
 		INSERT INTO room_snapshots (room_id, room_name, phase, version, state, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -57,8 +57,8 @@ func (p *Postgres) Save(ctx context.Context, snapshot game.Snapshot) error {
 			state = EXCLUDED.state,
 			updated_at = EXCLUDED.updated_at
 		WHERE room_snapshots.version < EXCLUDED.version`,
-		snapshot.RoomID, snapshot.RoomName, snapshot.Phase, snapshot.Version,
-		[]byte(snapshot.State), snapshot.UpdatedAt,
+		value.RoomID, value.RoomName, value.Phase, value.Version,
+		[]byte(value.State), value.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("save room snapshot: %w", err)
@@ -66,25 +66,23 @@ func (p *Postgres) Save(ctx context.Context, snapshot game.Snapshot) error {
 	return nil
 }
 
-func (p *Postgres) Load(ctx context.Context, roomID string) (game.Snapshot, error) {
-	var snapshot game.Snapshot
-	var phase string
+func (p *Postgres) Load(ctx context.Context, roomID string) (snapshot.Snapshot, error) {
+	var value snapshot.Snapshot
 	err := p.pool.QueryRow(ctx, `
 		SELECT room_id, room_name, phase, version, state, updated_at
 		FROM room_snapshots
 		WHERE room_id = $1`, roomID,
 	).Scan(
-		&snapshot.RoomID, &snapshot.RoomName, &phase, &snapshot.Version,
-		&snapshot.State, &snapshot.UpdatedAt,
+		&value.RoomID, &value.RoomName, &value.Phase, &value.Version,
+		&value.State, &value.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return game.Snapshot{}, game.ErrRoomNotFound
+		return snapshot.Snapshot{}, snapshot.ErrNotFound
 	}
 	if err != nil {
-		return game.Snapshot{}, fmt.Errorf("load room snapshot: %w", err)
+		return snapshot.Snapshot{}, fmt.Errorf("load room snapshot: %w", err)
 	}
-	snapshot.Phase = game.Phase(phase)
-	return snapshot, nil
+	return value, nil
 }
 
 func (p *Postgres) Close() {

@@ -25,7 +25,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./game-server.openapi.yaml#/components/schemas/QuestionPackCatalog"
+                $ref: "./games/oddoneout/openapi.yaml#/components/schemas/QuestionPackCatalog"
   /v1/rooms:
     post:
       operationId: createRoom
@@ -35,7 +35,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "./game-server.openapi.yaml#/components/schemas/CreateRoomRequest"
+              $ref: "./games/oddoneout/openapi.yaml#/components/schemas/CreateRoomRequest"
       responses:
         "201":
           description: Room created
@@ -43,7 +43,7 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: "./game-server.openapi.yaml#/components/schemas/Session"
+                  - $ref: "./games/oddoneout/openapi.yaml#/components/schemas/Session"
                   - type: object
                     required: [game_server_url]
                     properties:

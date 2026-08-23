@@ -1,4 +1,4 @@
-package game
+package oddoneout
 
 import (
 	"encoding/json"

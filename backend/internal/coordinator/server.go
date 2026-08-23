@@ -16,8 +16,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ak/skewa/backend/internal/adminapi"
-	"github.com/ak/skewa/backend/internal/middleware"
+	"github.com/ak/sodapop/backend/internal/adminapi"
+	"github.com/ak/sodapop/backend/internal/middleware"
 )
 
 const maxBodyBytes = 1 << 20

@@ -143,7 +143,7 @@ paths:
   /v1/rooms/{roomId}/ws:
     get:
       operationId: connectToRoom
-      summary: Upgrade to the Skewa room WebSocket protocol
+      summary: Upgrade to the Sodapop room WebSocket protocol
       parameters:
         - $ref: "#/components/parameters/RoomId"
       responses:

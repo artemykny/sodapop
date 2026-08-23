@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ak/skewa/backend/internal/appserver"
-	"github.com/ak/skewa/backend/internal/coordinator"
+	"github.com/ak/sodapop/backend/internal/appserver"
+	"github.com/ak/sodapop/backend/internal/coordinator"
 )
 
 func main() {

@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ak/skewa/backend/internal/adminapi"
-	game "github.com/ak/skewa/backend/internal/games/oddoneout"
-	"github.com/ak/skewa/backend/internal/games/oddoneout/questionpacks"
-	"github.com/ak/skewa/backend/internal/middleware"
+	"github.com/ak/sodapop/backend/internal/adminapi"
+	game "github.com/ak/sodapop/backend/internal/games/oddoneout"
+	"github.com/ak/sodapop/backend/internal/games/oddoneout/questionpacks"
+	"github.com/ak/sodapop/backend/internal/middleware"
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 )
@@ -263,7 +263,7 @@ func (s *Server) roomWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	connection, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		OriginPatterns: s.originPatterns,
-		Subprotocols:   []string{"skewa"},
+		Subprotocols:   []string{"sodapop"},
 	})
 	if err != nil {
 		s.logger.Warn("accept websocket", "room_id", room.IDValue(), "error", err)

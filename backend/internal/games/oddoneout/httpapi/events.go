@@ -4,7 +4,7 @@ import (
 	"slices"
 	"time"
 
-	game "github.com/ak/skewa/backend/internal/games/oddoneout"
+	game "github.com/ak/sodapop/backend/internal/games/oddoneout"
 )
 
 type playersUpdatedPayload struct {

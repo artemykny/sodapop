@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ak/skewa/backend/internal/snapshot"
+	"github.com/ak/sodapop/backend/internal/snapshot"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

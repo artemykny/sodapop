@@ -95,7 +95,7 @@ test("accepts custom questions as write-only room input", async ({ page }) => {
   await page.getByRole("button", { name: "Create room" }).click();
   await expect(page.getByRole("heading", { name: "The room is open" })).toBeVisible();
 
-  const session = await page.evaluate(() => JSON.parse(localStorage.getItem("skewa-session-v1")));
+  const session = await page.evaluate(() => JSON.parse(localStorage.getItem("sodapop-session-v1")));
   expect(session.state).not.toHaveProperty("questions");
   expect(JSON.stringify(session.state)).not.toContain("Custom fake question?");
 });

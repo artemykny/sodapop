@@ -9,9 +9,9 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/oddoneout-server .
 
 FROM alpine:3.22
 
-RUN apk add --no-cache ca-certificates && adduser -D -u 10001 skewa
+RUN apk add --no-cache ca-certificates && adduser -D -u 10001 sodapop
 COPY --from=build /out/oddoneout-server /app/oddoneout-server
 COPY --from=build /out/coordinator /app/coordinator
-USER skewa
+USER sodapop
 EXPOSE 8080 8081
 CMD ["/app/oddoneout-server"]

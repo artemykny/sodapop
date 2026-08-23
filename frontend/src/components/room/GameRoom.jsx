@@ -37,7 +37,7 @@ export function GameRoom({ session, connection, send, leave, setNotice }) {
   return (
     <main className="game-layout">
       <header className="game-header">
-        <button className="wordmark wordmark-dark wordmark-button" onClick={confirmLeave} aria-label="Leave game and return home">SKEWA<span>●</span></button>
+        <button className="wordmark wordmark-dark wordmark-button" onClick={confirmLeave} aria-label="Leave game and return home">SODAPOP<span>●</span></button>
         <div className="room-heading">
           <span className="room-name">{state.room_name}</span>
           <span className={`connection connection-${connection}`}><i />{connection === "live" ? "Live" : connection === "offline" ? "Reconnecting" : "Connecting"}</span>

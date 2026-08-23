@@ -3,7 +3,7 @@ package questionpacks
 import (
 	"slices"
 
-	"github.com/ak/skewa/backend/internal/games/oddoneout"
+	"github.com/ak/sodapop/backend/internal/games/oddoneout"
 )
 
 type Pack struct {

@@ -1,4 +1,4 @@
-# Skewa Backend
+# Sodapop Backend
 
 The backend contains a shared coordinator and a server for each game:
 
@@ -11,7 +11,7 @@ All Odd One Out-specific code lives under `internal/games/oddoneout`: domain sta
 question packs, HTTP handlers, and WebSocket events. Shared coordination,
 identifiers, middleware, snapshot contracts, and PostgreSQL storage remain
 under `internal/` so another game can be added as a sibling module without
-depending on Skewa types.
+depending on Sodapop types.
 
 Built-in question packs live in `internal/games/oddoneout/questionpacks`. Both services expose
 pack metadata at `GET /v1/question-packs`, while the question text remains on
@@ -51,7 +51,7 @@ migration is applied at startup.
 
 ```sh
 ADMIN_PASSWORD='use-the-same-long-random-url-safe-value' \
-  DATABASE_URL=postgres://skewa:skewa@localhost:5432/skewa?sslmode=disable \
+  DATABASE_URL=postgres://sodapop:sodapop@localhost:5432/sodapop?sslmode=disable \
   go run ./cmd/oddoneout-server
 ```
 

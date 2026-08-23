@@ -55,7 +55,7 @@ export function AdminPage() {
     return (
       <main className="admin-login">
         <section className="admin-login-card">
-          <a className="wordmark wordmark-dark" href="/">SKEWA<span>●</span></a>
+          <a className="wordmark wordmark-dark" href="/">SODAPOP<span>●</span></a>
           <p className="kicker">Restricted area</p>
           <h1>Admin console</h1>
           <p>Paste the administrator password. It is used only for this browser session and is never stored locally.</p>
@@ -85,7 +85,7 @@ export function AdminPage() {
     <main className="admin-page">
       <header className="admin-header">
         <div>
-          <a className="wordmark wordmark-light" href="/">SKEWA<span>●</span></a>
+          <a className="wordmark wordmark-light" href="/">SODAPOP<span>●</span></a>
           <span className="admin-badge">Admin</span>
         </div>
         <div className="admin-actions">

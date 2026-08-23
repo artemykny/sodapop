@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ak/skewa/backend/internal/adminapi"
+	"github.com/ak/sodapop/backend/internal/adminapi"
 )
 
 func TestCreateAndResolveRoom(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ak/skewa/backend/internal/snapshot"
+	"github.com/ak/sodapop/backend/internal/snapshot"
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
@@ -21,9 +21,9 @@ func TestPostgresSaveAndLoad(t *testing.T) {
 	defer cancel()
 	container, err := tcpostgres.Run(
 		ctx, "postgres:17-alpine",
-		tcpostgres.WithDatabase("skewa"),
-		tcpostgres.WithUsername("skewa"),
-		tcpostgres.WithPassword("skewa"),
+		tcpostgres.WithDatabase("sodapop"),
+		tcpostgres.WithUsername("sodapop"),
+		tcpostgres.WithPassword("sodapop"),
 		tcpostgres.BasicWaitStrategies(),
 	)
 	if err != nil {

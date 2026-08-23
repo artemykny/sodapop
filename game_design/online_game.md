@@ -1,6 +1,6 @@
 # Online Game Scenario
 
-Skewa is a multiplayer odd-one-out deduction game. Each round, most players
+Sodapop is a multiplayer odd-one-out deduction game. Each round, most players
 receive the same real question, while one player, the imposter, receives a
 different fake question. Everyone answers, then tries to work out who was
 playing from the wrong prompt.

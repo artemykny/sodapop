@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ak/skewa/backend/internal/identifier"
-	"github.com/ak/skewa/backend/internal/snapshot"
+	"github.com/ak/sodapop/backend/internal/identifier"
+	"github.com/ak/sodapop/backend/internal/snapshot"
 )
 
 var ErrRoomNotFound = errors.New("room not found")

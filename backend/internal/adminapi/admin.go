@@ -29,7 +29,7 @@ func (a Auth) Require(w http.ResponseWriter, r *http.Request) bool {
 	password, ok := bearerToken(r.Header.Get("Authorization"))
 	provided := sha256.Sum256([]byte(password))
 	if !ok || subtle.ConstantTimeCompare(a.digest[:], provided[:]) != 1 {
-		w.Header().Set("WWW-Authenticate", `Bearer realm="skewa-admin"`)
+		w.Header().Set("WWW-Authenticate", `Bearer realm="sodapop-admin"`)
 		writeProblem(w, http.StatusUnauthorized, "invalid_admin_password", "admin password is invalid")
 		return false
 	}

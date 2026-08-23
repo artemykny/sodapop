@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	game "github.com/ak/skewa/backend/internal/games/oddoneout"
+	game "github.com/ak/sodapop/backend/internal/games/oddoneout"
 )
 
 func TestRoomUpdateProjectsOnlyPublicChanges(t *testing.T) {

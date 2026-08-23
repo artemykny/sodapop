@@ -18,7 +18,7 @@ export function useGameSocket(session, setSession, setNotice) {
 
     const connect = () => {
       setConnection("connecting");
-      const socket = new WebSocket(socketUrl(session), ["skewa", session.token]);
+      const socket = new WebSocket(socketUrl(session), ["sodapop", session.token]);
       socketRef.current = socket;
       socket.onopen = () => setConnection("live");
       socket.onmessage = (event) => {

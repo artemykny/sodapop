@@ -1,6 +1,6 @@
-# Skewa
+# Sodapop
 
-Skewa is a multiplayer game application. Its first game, Odd One Out, has
+Sodapop is a multiplayer game application. Its first game, Odd One Out, has
 players answer secretly assigned prompts, discuss the revealed answers, and
 vote to find the player who was answering a different question.
 

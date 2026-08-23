@@ -1,1 +1,1 @@
-export const adminPassword = "skewa-e2e-admin-" + "long-random-looking-secret-".repeat(12);
+export const adminPassword = "sodapop-e2e-admin-" + "long-random-looking-secret-".repeat(12);

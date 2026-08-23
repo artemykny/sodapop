@@ -4,7 +4,7 @@ Connect to `GET /v1/rooms/{room_id}/ws` after creating or joining a room.
 Browser clients authenticate with WebSocket subprotocols:
 
 ```js
-new WebSocket(url, ["skewa", sessionToken]);
+new WebSocket(url, ["sodapop", sessionToken]);
 ```
 
 Non-browser clients may instead send `Authorization: Bearer <token>`. The

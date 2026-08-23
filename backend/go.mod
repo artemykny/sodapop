@@ -1,4 +1,4 @@
-module github.com/ak/skewa/backend
+module github.com/ak/sodapop/backend
 
 go 1.26.0
 

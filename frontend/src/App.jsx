@@ -4,7 +4,7 @@ import { Home } from "./components/home/Home.jsx";
 import { GameRoom } from "./components/room/GameRoom.jsx";
 import { useGameSocket } from "./hooks/useGameSocket.js";
 
-const SESSION_KEY = "skewa-session-v1";
+const SESSION_KEY = "sodapop-session-v1";
 
 function loadSession() {
   try {

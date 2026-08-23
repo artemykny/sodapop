@@ -35,7 +35,7 @@ export function Home({ onSession }) {
   return (
     <main className="home">
       <section className="home-story" aria-labelledby="home-title">
-        <a className="wordmark wordmark-light" href="/" aria-label="Skewa home">SKEWA<span>●</span></a>
+        <a className="wordmark wordmark-light" href="/" aria-label="Sodapop home">SODAPOP<span>●</span></a>
         <div className="story-copy">
           <p className="kicker kicker-light">Same room. Different question.</p>
           <h1 id="home-title">Blend in.<br />Call them out.</h1>
@@ -52,7 +52,7 @@ export function Home({ onSession }) {
 
       <section className="home-panel">
         <div className="panel-topline">
-          <div className="wordmark wordmark-dark">SKEWA<span>●</span></div>
+          <div className="wordmark wordmark-dark">SODAPOP<span>●</span></div>
           <span className="tiny-label">3–20 players</span>
         </div>
         <div className="mode-tabs" role="tablist" aria-label="Room action">

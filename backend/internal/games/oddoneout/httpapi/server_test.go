@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ak/skewa/backend/internal/adminapi"
-	game "github.com/ak/skewa/backend/internal/games/oddoneout"
+	"github.com/ak/sodapop/backend/internal/adminapi"
+	game "github.com/ak/sodapop/backend/internal/games/oddoneout"
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 )
@@ -46,7 +46,7 @@ func TestHTTPAndWebSocketRoomFlow(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + host.WebSocketPath
-	connection, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{Subprotocols: []string{"skewa", host.Token}})
+	connection, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{Subprotocols: []string{"sodapop", host.Token}})
 	if err != nil {
 		t.Fatalf("websocket.Dial() error = %v", err)
 	}

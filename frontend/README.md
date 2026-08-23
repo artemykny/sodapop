@@ -1,6 +1,6 @@
-# Skewa Frontend
+# Sodapop Frontend
 
-React and Vite client for the Skewa multiplayer game application. The current
+React and Vite client for the Sodapop multiplayer game application. The current
 game is Odd One Out.
 
 The join form searches authoritative game-server state after two typed

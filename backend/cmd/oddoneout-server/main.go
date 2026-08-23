@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ak/skewa/backend/internal/appserver"
-	"github.com/ak/skewa/backend/internal/games/oddoneout"
-	"github.com/ak/skewa/backend/internal/games/oddoneout/httpapi"
-	"github.com/ak/skewa/backend/internal/snapshot"
-	"github.com/ak/skewa/backend/internal/storage"
+	"github.com/ak/sodapop/backend/internal/appserver"
+	"github.com/ak/sodapop/backend/internal/games/oddoneout"
+	"github.com/ak/sodapop/backend/internal/games/oddoneout/httpapi"
+	"github.com/ak/sodapop/backend/internal/snapshot"
+	"github.com/ak/sodapop/backend/internal/storage"
 )
 
 func main() {

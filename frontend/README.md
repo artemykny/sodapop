@@ -36,3 +36,22 @@ npm run dev
 Copy `.env.example` to `.env` to override the coordinator URL. Production
 deployments should set `VITE_COORDINATOR_URL` to the public coordinator URL at
 build time.
+
+## End-to-end tests
+
+Install the Playwright browser once, then run the suite:
+
+```sh
+npx playwright install chromium
+npm run test:e2e
+```
+
+The Playwright configuration starts an isolated game server, coordinator, and
+Vite server automatically. The suite covers backend-owned question packs,
+custom uploads, invite/password behavior, and a complete three-player round.
+
+For interactive debugging:
+
+```sh
+npm run test:e2e:ui
+```

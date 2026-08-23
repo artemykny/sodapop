@@ -38,4 +38,4 @@ player who was answering a different question.
 
 See [`backend/README.md`](backend/README.md) and
 [`frontend/README.md`](frontend/README.md) for local development commands and
-service configuration.
+service configuration, including the Playwright end-to-end suite.

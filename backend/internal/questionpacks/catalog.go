@@ -2,7 +2,6 @@ package questionpacks
 
 import (
 	"slices"
-	"sort"
 
 	"github.com/ak/skewa/backend/internal/game"
 )
@@ -58,6 +57,8 @@ var catalog = map[string]Pack{
 	},
 }
 
+var catalogOrder = []string{"classic", "after_dark"}
+
 func Get(id string) (Pack, bool) {
 	pack, ok := catalog[id]
 	if !ok {
@@ -69,12 +70,12 @@ func Get(id string) (Pack, bool) {
 
 func List() []Metadata {
 	result := make([]Metadata, 0, len(catalog))
-	for _, pack := range catalog {
+	for _, id := range catalogOrder {
+		pack := catalog[id]
 		result = append(result, Metadata{
 			ID: pack.ID, Name: pack.Name, Description: pack.Description,
 			QuestionCount: len(pack.Questions),
 		})
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return result
 }

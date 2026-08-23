@@ -64,7 +64,8 @@ export function CreateForm({ busy, submit, packs, catalogError }) {
         <Field label="Room name"><input value={values.roomName} onChange={update("roomName")} maxLength={60} required /></Field>
         <Field label="Your name"><input value={values.hostName} onChange={update("hostName")} maxLength={30} placeholder="Host name" autoFocus required /></Field>
       </div>
-      <Field label="Question pack">
+      <fieldset className="field field-group">
+        <legend>Question pack</legend>
         <div className="pack-grid">
           {packs.map((pack) => (
             <button type="button" key={pack.id} className={`pack-choice ${!customQuestions && values.pack === pack.id ? "selected" : ""}`} onClick={() => selectPack(pack)}>
@@ -76,7 +77,7 @@ export function CreateForm({ busy, submit, packs, catalogError }) {
           </button>
           <input ref={fileRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={uploadQuestions} />
         </div>
-      </Field>
+      </fieldset>
       {catalogError && <p className="form-error" role="alert">Built-in packs could not be loaded. You can still upload a custom pack.</p>}
       <div className="settings-strip">
         <Field label="Players"><input type="number" min="3" max="20" value={values.playerLimit} onChange={update("playerLimit")} /></Field>

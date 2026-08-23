@@ -48,13 +48,28 @@ func TestHTTPAndWebSocketRoomFlow(t *testing.T) {
 		t.Fatalf("websocket.Dial() error = %v", err)
 	}
 	defer connection.CloseNow()
+	initialPayload := readPayloadOfType(t, ctx, connection, "sync")
+	var initial game.View
+	if err := json.Unmarshal(initialPayload, &initial); err != nil {
+		t.Fatalf("decode initial sync: %v", err)
+	}
+	if initial.Phase != game.PhaseLobby || initial.YourPlayerID != host.PlayerID {
+		t.Fatalf("initial sync = %+v", initial)
+	}
 
 	if err := wsjson.Write(ctx, connection, clientMessage{Type: "start_game", RequestID: "req-1"}); err != nil {
 		t.Fatalf("write start_game: %v", err)
 	}
-	state := readStateInPhase(t, ctx, connection, game.PhaseAnswering)
-	if state.YourPrompt == "" || state.RealQuestion != "" {
-		t.Fatalf("answering state leaked or omitted prompt: %+v", state)
+	roundPayload := readPayloadOfType(t, ctx, connection, "round_started")
+	var round roundStartedPayload
+	if err := json.Unmarshal(roundPayload, &round); err != nil {
+		t.Fatalf("decode round_started: %v", err)
+	}
+	if round.YourPrompt == "" || round.Round != 1 {
+		t.Fatalf("round_started = %+v", round)
+	}
+	if bytes.Contains(roundPayload, []byte("real_question")) || bytes.Contains(roundPayload, []byte("questions")) {
+		t.Fatalf("round_started leaked hidden state: %s", roundPayload)
 	}
 }
 
@@ -148,7 +163,7 @@ func joinRoom(t *testing.T, baseURL, roomID, displayName string) testSession {
 	return session
 }
 
-func readStateInPhase(t *testing.T, ctx context.Context, connection *websocket.Conn, phase game.Phase) game.View {
+func readPayloadOfType(t *testing.T, ctx context.Context, connection *websocket.Conn, messageType string) json.RawMessage {
 	t.Helper()
 	for {
 		var message struct {
@@ -158,15 +173,9 @@ func readStateInPhase(t *testing.T, ctx context.Context, connection *websocket.C
 		if err := wsjson.Read(ctx, connection, &message); err != nil {
 			t.Fatalf("read websocket message: %v", err)
 		}
-		if message.Type != "state" {
+		if message.Type != messageType {
 			continue
 		}
-		var state game.View
-		if err := json.Unmarshal(message.Payload, &state); err != nil {
-			t.Fatalf("decode state: %v", err)
-		}
-		if state.Phase == phase {
-			return state
-		}
+		return message.Payload
 	}
 }

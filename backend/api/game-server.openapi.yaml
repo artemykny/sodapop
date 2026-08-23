@@ -157,10 +157,11 @@ components:
           description: Identifier of a built-in backend-owned question pack
         questions:
           type: array
-          description: Custom question pairs supplied by the room host
+          writeOnly: true
+          description: Custom question pairs supplied as room-creation input
           minItems: 1
           items:
-            $ref: "#/components/schemas/Question"
+            $ref: "#/components/schemas/QuestionInput"
     Settings:
       type: object
       additionalProperties: false
@@ -186,10 +187,11 @@ components:
           type: integer
           minimum: 1
           maximum: 50
-    Question:
+    QuestionInput:
       type: object
       additionalProperties: false
       required: [real, fake]
+      description: Write-only custom question input; never returned in room state
       properties:
         real:
           type: string
@@ -236,12 +238,10 @@ components:
       allOf:
         - $ref: "#/components/schemas/Credentials"
         - type: object
-          required: [websocket_path, state]
+          required: [websocket_path]
           properties:
             websocket_path:
               type: string
-            state:
-              $ref: "#/components/schemas/RoomView"
     Player:
       type: object
       required: [id, display_name, is_host, connected, score]

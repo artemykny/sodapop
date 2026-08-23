@@ -54,7 +54,6 @@ function normalizeSession(session, gameServerUrl) {
     token: session.token,
     websocketPath: session.websocket_path,
     gameServerUrl: gameServerUrl.replace(/\/$/, ""),
-    state: session.state,
   };
 }
 

@@ -67,8 +67,7 @@ type joinRoomRequest struct {
 
 type sessionResponse struct {
 	game.Credentials
-	WebSocketPath string    `json:"websocket_path"`
-	State         game.View `json:"state"`
+	WebSocketPath string `json:"websocket_path"`
 }
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
@@ -90,7 +89,7 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusBadRequest, "invalid_question_source", err.Error())
 		return
 	}
-	room, credentials, err := s.manager.Create(game.CreateRoomParams{
+	_, credentials, err := s.manager.Create(game.CreateRoomParams{
 		ID: request.RoomID, Name: request.Name, Password: request.Password,
 		HostName: request.HostName, Settings: request.Settings, Questions: questions,
 	})
@@ -98,15 +97,9 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 		writeGameError(w, err)
 		return
 	}
-	state, err := room.View(credentials.PlayerID)
-	if err != nil {
-		writeProblem(w, http.StatusInternalServerError, "internal_error", "could not create room view")
-		return
-	}
 	writeJSON(w, http.StatusCreated, sessionResponse{
 		Credentials:   credentials,
 		WebSocketPath: fmt.Sprintf("/v1/rooms/%s/ws", credentials.RoomID),
-		State:         state,
 	})
 }
 
@@ -143,15 +136,9 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 		writeGameError(w, err)
 		return
 	}
-	state, err := room.View(credentials.PlayerID)
-	if err != nil {
-		writeProblem(w, http.StatusInternalServerError, "internal_error", "could not create player view")
-		return
-	}
 	writeJSON(w, http.StatusCreated, sessionResponse{
 		Credentials:   credentials,
 		WebSocketPath: fmt.Sprintf("/v1/rooms/%s/ws", credentials.RoomID),
-		State:         state,
 	})
 }
 
@@ -228,6 +215,7 @@ func (s *Server) roomWebSocket(w http.ResponseWriter, r *http.Request) {
 	outbound := make(chan serverMessage, 16)
 	readDone := make(chan error, 1)
 	go s.readCommands(ctx, connection, room, playerID, outbound, readDone)
+	var previous *game.View
 
 	for {
 		select {
@@ -240,7 +228,12 @@ func (s *Server) roomWebSocket(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-updates:
 			state, err := room.View(playerID)
-			if err != nil || s.writeWebSocket(ctx, connection, serverMessage{Type: "state", Payload: state}) != nil {
+			if err != nil {
+				return
+			}
+			message, send := roomUpdate(previous, state)
+			previous = &state
+			if send && s.writeWebSocket(ctx, connection, message) != nil {
 				return
 			}
 		case message := <-outbound:

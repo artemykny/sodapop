@@ -122,6 +122,8 @@ type RoundResult struct {
 	VoteCounts map[string]int `json:"vote_counts"`
 }
 
+// View is the player-specific transport projection of a room. It must never
+// contain hidden room state or questions belonging to another player.
 type View struct {
 	Version      uint64       `json:"version"`
 	RoomID       string       `json:"room_id"`

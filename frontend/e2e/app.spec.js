@@ -17,7 +17,7 @@ test("loads backend-owned pack metadata and creates a room", async ({ page, requ
   await expect(page.getByText("1 rounds", { exact: true }).first()).toBeVisible();
 });
 
-test("creates a room from a custom question upload", async ({ page }) => {
+test("accepts custom questions as write-only room input", async ({ page }) => {
   const roomName = uniqueRoom("Custom pack");
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Classic mix" })).toBeVisible();
@@ -34,6 +34,10 @@ test("creates a room from a custom question upload", async ({ page }) => {
   await page.getByLabel("Rounds").fill("1");
   await page.getByRole("button", { name: "Create room" }).click();
   await expect(page.getByRole("heading", { name: "The room is open" })).toBeVisible();
+
+  const session = await page.evaluate(() => JSON.parse(localStorage.getItem("skewa-session-v1")));
+  expect(session.state).not.toHaveProperty("questions");
+  expect(JSON.stringify(session.state)).not.toContain("Custom fake question?");
 });
 
 test("invite link pre-fills the room and rejects a wrong password", async ({ browser, page }, testInfo) => {
@@ -87,6 +91,10 @@ test("three players complete a round and reach final scores", async ({ browser, 
       playerPage.locator(".answer-card h2").textContent()
     )));
     expect(new Set(prompts).size).toBe(2);
+
+    await bob.reload();
+    await expect(bob.getByRole("heading", { name: "Answer in secret" })).toBeVisible();
+    await expect(bob.locator(".answer-card h2")).toHaveText(prompts[1]);
 
     for (const [playerPage, answer] of [[page, "Host answer"], [bob, "Bob answer"], [chandra, "Chandra answer"]]) {
       await playerPage.getByLabel("Your answer").fill(answer);

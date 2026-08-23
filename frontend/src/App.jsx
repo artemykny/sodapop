@@ -7,7 +7,8 @@ const SESSION_KEY = "skewa-session-v1";
 
 function loadSession() {
   try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
+    const stored = JSON.parse(localStorage.getItem(SESSION_KEY));
+    return stored ? { ...stored, state: undefined } : null;
   } catch {
     return null;
   }
@@ -32,6 +33,12 @@ function App() {
     <div className="app-shell">
       {session?.state ? (
         <GameRoom session={session} connection={connection} send={send} leave={leave} setNotice={setNotice} />
+      ) : session ? (
+        <main className="room-loading" aria-live="polite">
+          <div className="pulse-dot" />
+          <p>Syncing your room…</p>
+          <button className="text-button" onClick={leave}>Cancel</button>
+        </main>
       ) : (
         <Home onSession={setSession} />
       )}

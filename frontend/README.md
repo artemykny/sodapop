@@ -4,12 +4,15 @@ React and Vite client for the Skewa multiplayer game.
 
 Built-in question text is owned by the backend. The client loads only question
 pack metadata from the coordinator and sends the selected `question_pack` ID
-when creating a room. Custom JSON uploads are sent as explicit custom questions.
+when creating a room. Hosts may alternatively submit custom question pairs as
+write-only room input; question pairs are never bundled into the app or returned
+as global room state.
 
 ## Source layout
 
 - `src/api/`: coordinator and game-server requests.
 - `src/hooks/`: WebSocket and countdown behavior.
+- `src/state/`: reduction of server events into the local player projection.
 - `src/components/home/`: room creation and joining.
 - `src/components/room/`: room shell, roster, and phase routing.
 - `src/components/room/phases/`: one component per game phase.
@@ -48,7 +51,8 @@ npm run test:e2e
 
 The Playwright configuration starts an isolated game server, coordinator, and
 Vite server automatically. The suite covers backend-owned question packs,
-custom uploads, invite/password behavior, and a complete three-player round.
+custom question input, question secrecy boundaries, invite/password behavior,
+and a complete three-player round.
 
 For interactive debugging:
 

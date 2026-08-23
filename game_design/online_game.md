@@ -11,7 +11,7 @@ One player creates a room and becomes the host.
 
 The host configures the game:
 
-- Question source: upload a file with questions or select a preset.
+- Question source: upload a custom file or select a backend-owned pack.
 - Room name.
 - Password.
 - Player limit.

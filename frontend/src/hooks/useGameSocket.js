@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { socketUrl } from "../api/client.js";
+import { applyRoomEvent } from "../state/roomEvents.js";
 
 function uid() {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -8,6 +9,7 @@ function uid() {
 export function useGameSocket(session, setSession, setNotice) {
   const [connection, setConnection] = useState("connecting");
   const socketRef = useRef(null);
+  const pendingRef = useRef(new Map());
 
   useEffect(() => {
     if (!session?.token) return undefined;
@@ -21,14 +23,24 @@ export function useGameSocket(session, setSession, setNotice) {
       socket.onopen = () => setConnection("live");
       socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        if (message.type === "state") {
-          setSession((current) => current ? { ...current, state: message.payload } : current);
+        if (message.type === "sync" || message.payload?.version) {
+          setSession((current) => current ? {
+            ...current,
+            state: applyRoomEvent(current.state, message),
+          } : current);
         }
         if (message.type === "error") {
           setNotice(message.payload?.message || "That move was not accepted.");
         }
+        if (message.type === "ack" || message.type === "error") {
+          const callback = pendingRef.current.get(message.request_id);
+          pendingRef.current.delete(message.request_id);
+          callback?.(message.type === "ack");
+        }
       };
       socket.onclose = () => {
+        for (const callback of pendingRef.current.values()) callback(false);
+        pendingRef.current.clear();
         if (disposed) return;
         setConnection("offline");
         retry = window.setTimeout(connect, 1800);
@@ -44,12 +56,15 @@ export function useGameSocket(session, setSession, setNotice) {
     };
   }, [session?.roomId, session?.token, session?.gameServerUrl, session?.websocketPath, setNotice, setSession]);
 
-  const send = useCallback((type, payload = {}) => {
+  const send = useCallback((type, payload = {}, onResult) => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) {
       setNotice("Reconnecting to the room. Try again in a moment.");
+      onResult?.(false);
       return false;
     }
-    socketRef.current.send(JSON.stringify({ type, request_id: uid(), payload }));
+    const requestId = uid();
+    if (onResult) pendingRef.current.set(requestId, onResult);
+    socketRef.current.send(JSON.stringify({ type, request_id: requestId, payload }));
     return true;
   }, [setNotice]);
 

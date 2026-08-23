@@ -38,18 +38,35 @@ Answers and votes lock on their first accepted submission.
 
 ## Server messages
 
-The server emits:
+The server owns the authoritative room. On connection it emits one personalized
+`sync` containing the player's current room projection. After that it sends only
+incremental public events:
 
-- `state`: the complete room view allowed for this player. State messages are
-  versioned and may safely replace the client's previous state.
+| Type | Meaning |
+| --- | --- |
+| `players_updated` | Public roster, connection, or score data changed |
+| `round_started` | A new round began; includes only this player's prompt |
+| `answer_locked` | This player's answer was accepted |
+| `discussion_started` | The real question and submitted answers became public |
+| `voting_started` | Voting opened |
+| `vote_locked` | This player's vote was accepted |
+| `round_result` | The imposter, counts, and updated scores became public |
+| `game_finished` | The game ended and final scores became public |
+
+Every incremental payload has a monotonically increasing `version`. Versions
+may skip because hidden actions by other players intentionally produce no event.
+Clients discard stale versions and update only their local projection.
+
+Command outcomes remain separate:
+
 - `ack`: a command was accepted; contains the original `request_id`.
 - `error`: a command was rejected; contains the original `request_id` and a
   `{code, message}` payload.
 
-The `state` payload deliberately varies by phase and player. During answering,
-only `your_prompt` is present. The real question and all submitted answers are
-revealed during discussion. The imposter and vote counts are revealed only in
-`round_result` and `finished`.
+The personalized projection deliberately varies by phase and player. During
+answering, `round_started` contains only `your_prompt`. The real question and
+submitted answers appear only once discussion starts. The imposter and vote
+counts appear only in `round_result` and a reconnecting player's finished sync.
 
-Clients should calculate a displayed countdown from the server's absolute
-`deadline` timestamp. The server remains authoritative for phase transitions.
+Clients calculate a displayed countdown from absolute `deadline` timestamps.
+The server remains authoritative for every phase transition and locked action.

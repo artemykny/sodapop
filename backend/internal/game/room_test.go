@@ -1,7 +1,9 @@
 package game
 
 import (
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -37,6 +39,15 @@ func TestRoomRoundFlowAndSecretViews(t *testing.T) {
 	}
 	if hostView.RealQuestion != "" || len(hostView.Answers) != 0 || hostView.Result != nil {
 		t.Fatal("answering view leaked round secrets")
+	}
+	serialized, err := json.Marshal(hostView)
+	if err != nil {
+		t.Fatalf("marshal answering view: %v", err)
+	}
+	for _, hiddenField := range []string{`"real_question"`, `"answers"`, `"result"`, `"imposter_id"`, `"questions"`} {
+		if strings.Contains(string(serialized), hiddenField) {
+			t.Fatalf("answering JSON leaked hidden field %s: %s", hiddenField, serialized)
+		}
 	}
 
 	if err := room.SubmitAnswer(host.PlayerID, "host answer"); err != nil {

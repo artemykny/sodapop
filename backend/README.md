@@ -2,15 +2,16 @@
 
 The backend contains two Go services:
 
-- `game-server` owns active rooms, validates commands, advances timers, and
-  broadcasts player-specific state over WebSockets.
+- `game-server` owns active rooms, validates commands, advances timers, sends a
+  personalized WebSocket sync, then emits small player-specific events.
 - `coordinator` selects a game server when a room is created and resolves room
   names or IDs to that server.
 
 Built-in question packs live in `internal/questionpacks`. Both services expose
 pack metadata at `GET /v1/question-packs`, while the question text remains on
 the backend. Room creation accepts either a backend `question_pack` identifier
-or host-supplied custom `questions`, but never both.
+or custom `questions` as write-only input. Question pairs are never returned in
+catalog or room-state responses.
 
 ## Requirements
 

@@ -73,7 +73,7 @@ export function CreateForm({ busy, submit, packs, catalogError }) {
             </button>
           ))}
           <button type="button" className={`pack-choice upload-choice ${customQuestions ? "selected" : ""}`} onClick={() => fileRef.current?.click()}>
-            <span>{customQuestions ? `${customQuestions.length} custom pairs` : "Upload JSON"}</span><small>Use your own real/fake question pairs.</small>
+            <span>{customQuestions ? `${customQuestions.length} custom pairs` : "Upload JSON"}</span><small>Sent once as room input, then owned by the backend.</small>
           </button>
           <input ref={fileRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={uploadQuestions} />
         </div>

@@ -125,8 +125,8 @@ func (m *Manager) watch(room *Room) {
 		case <-m.ctx.Done():
 			return
 		case <-room.Changes():
-			m.persist(room)
 			m.publish(room.IDValue())
+			m.persist(room)
 		}
 	}
 }

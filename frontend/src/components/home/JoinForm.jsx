@@ -10,7 +10,7 @@ export function JoinForm({ busy, submit, invite }) {
     event.preventDefault();
     submit(() => joinRoom({
       roomName: values.roomName.trim(), displayName: values.displayName.trim(), password: values.password,
-      roomId: invite.get("roomId") || "", gameServerUrl: invite.get("server") || "",
+      roomId: invite.get("roomId") || "",
     }));
   }
 

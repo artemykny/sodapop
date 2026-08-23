@@ -139,6 +139,7 @@ components:
         room_id:
           type: string
           description: Optional coordinator-assigned identifier
+          pattern: "^[A-Za-z0-9_-]{1,100}$"
         name:
           type: string
           minLength: 1

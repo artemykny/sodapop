@@ -71,8 +71,8 @@ type CreateRoomParams struct {
 }
 
 func (p CreateRoomParams) Validate() error {
-	if strings.TrimSpace(p.ID) == "" {
-		return errors.New("room id is required")
+	if !validRoomID(p.ID) {
+		return errors.New("room id must contain 1 to 100 URL-safe characters")
 	}
 	if n := len([]rune(strings.TrimSpace(p.Name))); n < 1 || n > 60 {
 		return errors.New("room name must contain between 1 and 60 characters")
@@ -80,7 +80,7 @@ func (p CreateRoomParams) Validate() error {
 	if n := len([]rune(strings.TrimSpace(p.HostName))); n < 1 || n > 30 {
 		return errors.New("host display name must contain between 1 and 30 characters")
 	}
-	if len(p.Password) > 100 {
+	if len([]rune(p.Password)) > 100 {
 		return errors.New("password must not exceed 100 characters")
 	}
 	if err := p.Settings.Validate(); err != nil {
@@ -98,6 +98,19 @@ func (p CreateRoomParams) Validate() error {
 		}
 	}
 	return nil
+}
+
+func validRoomID(value string) bool {
+	if len(value) < 1 || len(value) > 100 {
+		return false
+	}
+	for _, char := range value {
+		if (char < 'a' || char > 'z') && (char < 'A' || char > 'Z') &&
+			(char < '0' || char > '9') && char != '_' && char != '-' {
+			return false
+		}
+	}
+	return true
 }
 
 type Player struct {

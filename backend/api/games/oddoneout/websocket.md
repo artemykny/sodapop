@@ -55,7 +55,9 @@ incremental public events:
 
 Every incremental payload has a monotonically increasing `version`. Versions
 may skip because hidden actions by other players intentionally produce no event.
-Clients discard stale versions and update only their local projection.
+Clients discard stale versions and update only their local projection. Public
+notifications may also be coalesced, so phase and lock events include the
+current round and roster needed to recover directly to the latest projection.
 
 Command outcomes remain separate:
 

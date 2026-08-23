@@ -22,6 +22,7 @@ type roundStartedPayload struct {
 
 type phaseStartedPayload struct {
 	Version      uint64        `json:"version"`
+	Round        int           `json:"round"`
 	Deadline     *time.Time    `json:"deadline,omitempty"`
 	RealQuestion string        `json:"real_question,omitempty"`
 	Answers      []game.Answer `json:"answers,omitempty"`
@@ -29,11 +30,13 @@ type phaseStartedPayload struct {
 }
 
 type lockedPayload struct {
-	Version uint64 `json:"version"`
+	Version uint64        `json:"version"`
+	Players []game.Player `json:"players"`
 }
 
 type roundResultPayload struct {
 	Version      uint64            `json:"version"`
+	Round        int               `json:"round"`
 	Deadline     *time.Time        `json:"deadline,omitempty"`
 	RealQuestion string            `json:"real_question,omitempty"`
 	Answers      []game.Answer     `json:"answers,omitempty"`
@@ -71,10 +74,10 @@ func roomUpdate(previous *game.View, current game.View) (serverMessage, bool) {
 		}
 	}
 	if current.AnswerLocked != previous.AnswerLocked {
-		return serverMessage{Type: "answer_locked", Payload: lockedPayload{Version: current.Version}}, true
+		return serverMessage{Type: "answer_locked", Payload: lockedPayload{Version: current.Version, Players: current.Players}}, true
 	}
 	if current.VoteLocked != previous.VoteLocked {
-		return serverMessage{Type: "vote_locked", Payload: lockedPayload{Version: current.Version}}, true
+		return serverMessage{Type: "vote_locked", Payload: lockedPayload{Version: current.Version, Players: current.Players}}, true
 	}
 	if !slices.Equal(current.Players, previous.Players) {
 		return serverMessage{Type: "players_updated", Payload: playersPayload(current)}, true
@@ -88,14 +91,14 @@ func playersPayload(view game.View) playersUpdatedPayload {
 
 func phasePayload(view game.View) phaseStartedPayload {
 	return phaseStartedPayload{
-		Version: view.Version, Deadline: view.Deadline, RealQuestion: view.RealQuestion,
+		Version: view.Version, Round: view.Round, Deadline: view.Deadline, RealQuestion: view.RealQuestion,
 		Answers: view.Answers, Players: view.Players,
 	}
 }
 
 func resultPayload(view game.View) roundResultPayload {
 	return roundResultPayload{
-		Version: view.Version, Deadline: view.Deadline, RealQuestion: view.RealQuestion,
+		Version: view.Version, Round: view.Round, Deadline: view.Deadline, RealQuestion: view.RealQuestion,
 		Answers: view.Answers, Result: view.Result, Players: view.Players,
 	}
 }

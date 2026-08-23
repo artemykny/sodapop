@@ -26,9 +26,14 @@ func TestRoomUpdateProjectsOnlyPublicChanges(t *testing.T) {
 	locked := hiddenChange
 	locked.Version = 3
 	locked.AnswerLocked = true
+	locked.Players = []game.Player{{ID: "one", DisplayName: "One", Connected: true}}
 	message, send = roomUpdate(&hiddenChange, locked)
 	if !send || message.Type != "answer_locked" {
 		t.Fatalf("answer lock update = %+v, %v", message, send)
+	}
+	lockedUpdate := message.Payload.(lockedPayload)
+	if len(lockedUpdate.Players) != 1 || !lockedUpdate.Players[0].Connected {
+		t.Fatalf("answer lock dropped coalesced roster update: %+v", lockedUpdate)
 	}
 
 	discussion := locked
@@ -39,5 +44,20 @@ func TestRoomUpdateProjectsOnlyPublicChanges(t *testing.T) {
 	message, send = roomUpdate(&locked, discussion)
 	if !send || message.Type != "discussion_started" {
 		t.Fatalf("discussion update = %+v, %v", message, send)
+	}
+	if update := message.Payload.(phaseStartedPayload); update.Round != discussion.Round {
+		t.Fatalf("discussion round = %d, want %d", update.Round, discussion.Round)
+	}
+
+	// Subscription notifications are deliberately coalesced. A phase event must
+	// therefore stand on its own even if the client never observed round_started.
+	lobby := game.View{Version: 10, Phase: game.PhaseLobby}
+	voting := game.View{Version: 14, Phase: game.PhaseVoting, Round: 2}
+	message, send = roomUpdate(&lobby, voting)
+	if !send || message.Type != "voting_started" {
+		t.Fatalf("coalesced phase update = %+v, %v", message, send)
+	}
+	if update := message.Payload.(phaseStartedPayload); update.Round != 2 {
+		t.Fatalf("coalesced voting round = %d, want 2", update.Round)
 	}
 }

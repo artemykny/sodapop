@@ -12,7 +12,7 @@ export function GameRoom({ session, connection, send, leave, setNotice }) {
   const timeLeft = useCountdown(state.deadline);
 
   function copyInvite() {
-    const params = new URLSearchParams({ room: state.room_name, roomId: state.room_id, server: session.gameServerUrl });
+    const params = new URLSearchParams({ room: state.room_name, roomId: state.room_id });
     const invite = `${window.location.origin}${window.location.pathname}?${params}`;
     navigator.clipboard?.writeText(invite).then(() => setNotice("Invite link copied."), () => setNotice(invite));
   }

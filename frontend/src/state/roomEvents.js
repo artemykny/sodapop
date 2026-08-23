@@ -35,13 +35,13 @@ export function applyRoomEvent(state, message) {
         result: null,
       };
     case "answer_locked":
-      return { ...next, answer_locked: true };
+      return { ...next, answer_locked: true, players: payload.players };
     case "discussion_started":
       return phaseState(next, "discussion", payload);
     case "voting_started":
       return phaseState(next, "voting", payload);
     case "vote_locked":
-      return { ...next, vote_locked: true };
+      return { ...next, vote_locked: true, players: payload.players };
     case "round_result":
       return resultState(next, "round_result", payload);
     case "game_finished":
@@ -55,6 +55,7 @@ function phaseState(state, phase, payload) {
   return {
     ...state,
     phase,
+    round: payload.round,
     deadline: payload.deadline,
     real_question: payload.real_question,
     answers: payload.answers || [],
@@ -70,6 +71,7 @@ function resultState(state, phase, payload) {
   return {
     ...state,
     phase,
+    round: payload.round,
     deadline: payload.deadline,
     real_question: payload.real_question,
     answers: payload.answers || [],

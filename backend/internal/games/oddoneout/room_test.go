@@ -120,6 +120,34 @@ func TestRoomAuthenticationAndJoinValidation(t *testing.T) {
 	}
 }
 
+func TestLongUnicodePassword(t *testing.T) {
+	params := testRoomParams()
+	params.Password = strings.Repeat("🔐", 100)
+	room, _, err := NewRoom(params)
+	if err != nil {
+		t.Fatalf("NewRoom(100-character password) error = %v", err)
+	}
+	if _, err := room.Join("Bob", params.Password); err != nil {
+		t.Fatalf("Join(long password) error = %v", err)
+	}
+
+	params.ID = "room_too_long_password"
+	params.Password += "x"
+	if _, _, err := NewRoom(params); err == nil {
+		t.Fatal("NewRoom(101-character password) succeeded")
+	}
+}
+
+func TestRoomIDMustBeURLSafe(t *testing.T) {
+	for _, roomID := range []string{"", "room/escape", "room with spaces", strings.Repeat("x", 101)} {
+		params := testRoomParams()
+		params.ID = roomID
+		if _, _, err := NewRoom(params); err == nil {
+			t.Errorf("NewRoom(ID %q) succeeded", roomID)
+		}
+	}
+}
+
 func TestAnswerDeadlineSurvivesIntermediateStateChanges(t *testing.T) {
 	room, host, err := NewRoom(testRoomParams())
 	if err != nil {

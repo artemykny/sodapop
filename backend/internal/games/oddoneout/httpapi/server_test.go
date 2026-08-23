@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -139,6 +140,30 @@ func TestQuestionPacksAndInvalidSelection(t *testing.T) {
 	defer invalid.Body.Close()
 	if invalid.StatusCode != http.StatusBadRequest {
 		t.Fatalf("POST invalid pack status = %d, want %d", invalid.StatusCode, http.StatusBadRequest)
+	}
+}
+
+func TestCreateRoomRejectsTrailingJSONData(t *testing.T) {
+	manager := game.NewManager(nil, nil)
+	t.Cleanup(manager.Close)
+	server := httptest.NewServer(New(manager, nil, nil).Handler())
+	t.Cleanup(server.Close)
+
+	body := `{
+		"name":"Trailing Data","password":"","host_name":"Host",
+		"settings":{"player_limit":6,"answer_seconds":30,"discussion_seconds":30,"voting_seconds":30,"rounds":1},
+		"question_pack":"classic"
+	} trailing garbage`
+	response, err := http.Post(server.URL+"/v1/rooms", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST room: %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusBadRequest)
+	}
+	if _, err := manager.FindByName("Trailing Data"); !errors.Is(err, game.ErrRoomNotFound) {
+		t.Fatalf("invalid request created room: %v", err)
 	}
 }
 

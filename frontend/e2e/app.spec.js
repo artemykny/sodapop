@@ -47,11 +47,15 @@ test("invite link pre-fills the room and rejects a wrong password", async ({ bro
   await page.getByRole("button", { name: /Copy invite link/ }).click();
   const invite = await page.evaluate(() => navigator.clipboard.readText());
   expect(invite).toContain("roomId=");
+  expect(invite).not.toContain("server=");
+
+  const tamperedInvite = new URL(invite);
+  tamperedInvite.searchParams.set("server", "http://127.0.0.1:1");
 
   const guestContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
   const guest = await guestContext.newPage();
   try {
-    await guest.goto(invite);
+    await guest.goto(tamperedInvite.toString());
     await expect(guest.getByRole("tab", { name: "Join a room" })).toHaveAttribute("aria-selected", "true");
     await expect(guest.getByLabel("Room name")).toHaveValue(roomName);
     await guest.getByLabel("Your display name").fill("Guest");

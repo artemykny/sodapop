@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +25,7 @@ const maxRequestBytes = 1 << 20
 type Server struct {
 	manager        *game.Manager
 	logger         *slog.Logger
+	allowedOrigins []string
 	originPatterns []string
 
 	connectionsMu sync.Mutex
@@ -34,8 +37,9 @@ func New(manager *game.Manager, logger *slog.Logger, originPatterns []string) *S
 		logger = slog.Default()
 	}
 	return &Server{
-		manager: manager, logger: logger, originPatterns: middleware.OriginHostPatterns(originPatterns),
-		connections: make(map[string]int),
+		manager: manager, logger: logger, allowedOrigins: slices.Clone(originPatterns),
+		originPatterns: middleware.OriginHostPatterns(originPatterns),
+		connections:    make(map[string]int),
 	}
 }
 
@@ -47,7 +51,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/rooms/{roomID}", s.getRoom)
 	mux.HandleFunc("POST /v1/rooms/{roomID}/players", s.joinRoom)
 	mux.HandleFunc("GET /v1/rooms/{roomID}/ws", s.roomWebSocket)
-	return s.recoverPanic(s.logRequest(middleware.CORS(s.originPatterns, mux)))
+	return s.recoverPanic(s.logRequest(middleware.CORS(s.allowedOrigins, mux)))
 }
 
 type createRoomRequest struct {
@@ -355,7 +359,10 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, target any) error {
 	if err := decoder.Decode(target); err != nil {
 		return err
 	}
-	if decoder.Decode(&struct{}{}) == nil {
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		if err != nil {
+			return errors.New("request body contains invalid trailing data")
+		}
 		return errors.New("request body must contain a single JSON object")
 	}
 	return nil

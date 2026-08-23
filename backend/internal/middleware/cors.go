@@ -8,10 +8,9 @@ import (
 )
 
 func CORS(originPatterns []string, next http.Handler) http.Handler {
-	patterns := OriginHostPatterns(originPatterns)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin != "" && originAllowed(origin, patterns) {
+		if origin != "" && originAllowed(origin, originPatterns) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -43,10 +42,18 @@ func OriginHostPatterns(values []string) []string {
 
 func originAllowed(origin string, patterns []string) bool {
 	parsed, err := url.Parse(origin)
-	if err != nil || parsed.Host == "" {
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return false
 	}
-	for _, pattern := range patterns {
+	for _, configured := range patterns {
+		configured = strings.TrimSpace(configured)
+		pattern, scheme := configured, ""
+		if allowed, err := url.Parse(configured); err == nil && allowed.Host != "" {
+			pattern, scheme = allowed.Host, strings.ToLower(allowed.Scheme)
+		}
+		if scheme != "" && scheme != strings.ToLower(parsed.Scheme) {
+			continue
+		}
 		matched, err := path.Match(strings.ToLower(pattern), strings.ToLower(parsed.Host))
 		if err == nil && matched {
 			return true

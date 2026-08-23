@@ -34,11 +34,10 @@ export async function createRoom(payload) {
   return normalizeSession(session, session.game_server_url);
 }
 
-export async function joinRoom({ roomName, roomId, gameServerUrl, displayName, password }) {
-  let assignment = { room_id: roomId, game_server_url: gameServerUrl };
-  if (!roomId || !gameServerUrl) {
-    assignment = await request(`${coordinatorUrl}/v1/rooms?name=${encodeURIComponent(roomName)}`);
-  }
+export async function joinRoom({ roomName, roomId, displayName, password }) {
+  const assignment = roomId
+    ? await request(`${coordinatorUrl}/v1/rooms/${encodeURIComponent(roomId)}`)
+    : await request(`${coordinatorUrl}/v1/rooms?name=${encodeURIComponent(roomName)}`);
   const server = assignment.game_server_url.replace(/\/$/, "");
   const session = await request(`${server}/v1/rooms/${encodeURIComponent(assignment.room_id)}/players`, {
     method: "POST",

@@ -481,7 +481,8 @@ func (r *Room) passwordMatches(password string) bool {
 	if len(r.PasswordHash) == 0 {
 		return password == ""
 	}
-	return bcrypt.CompareHashAndPassword(r.PasswordHash, []byte(password)) == nil
+	key := passwordKey(password)
+	return bcrypt.CompareHashAndPassword(r.PasswordHash, key[:]) == nil
 }
 
 func (r *Room) shuffleQuestions() error {
@@ -514,11 +515,16 @@ func hashPassword(password string) ([]byte, error) {
 	if password == "" {
 		return nil, nil
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	key := passwordKey(password)
+	hash, err := bcrypt.GenerateFromPassword(key[:], bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("hash room password: %w", err)
 	}
 	return hash, nil
+}
+
+func passwordKey(password string) [sha256.Size]byte {
+	return sha256.Sum256([]byte(password))
 }
 
 func tokenHash(token string) string {

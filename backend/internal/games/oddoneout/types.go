@@ -84,8 +84,8 @@ func (p CreateRoomParams) Validate() error {
 	if n := len([]rune(strings.TrimSpace(p.HostName))); n < 1 || n > 30 {
 		return errors.New("host display name must contain between 1 and 30 characters")
 	}
-	if len([]rune(p.Password)) > 100 {
-		return errors.New("password must not exceed 100 characters")
+	if n := len([]rune(p.Password)); n < 1 || n > 100 {
+		return errors.New("password must contain between 1 and 100 characters")
 	}
 	if err := p.Settings.Validate(); err != nil {
 		return err

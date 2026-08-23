@@ -131,7 +131,7 @@ func TestQuestionPacksAndInvalidSelection(t *testing.T) {
 	}
 
 	invalidBody := `{
-		"name":"Invalid Pack","password":"","host_name":"Host",
+		"name":"Invalid Pack","password":"secret","host_name":"Host",
 		"settings":{"player_limit":6,"answer_seconds":30,"discussion_seconds":30,"voting_seconds":30,"rounds":1},
 		"question_pack":"missing"
 	}`
@@ -152,7 +152,7 @@ func TestCreateRoomRejectsTrailingJSONData(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	body := `{
-		"name":"Trailing Data","password":"","host_name":"Host",
+		"name":"Trailing Data","password":"secret","host_name":"Host",
 		"settings":{"player_limit":6,"answer_seconds":30,"discussion_seconds":30,"voting_seconds":30,"rounds":1},
 		"question_pack":"classic"
 	} trailing garbage`

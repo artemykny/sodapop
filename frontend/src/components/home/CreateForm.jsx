@@ -3,16 +3,16 @@ import { createRoom } from "../../api/client.js";
 import { Field } from "../shared/Field.jsx";
 import { FlowProgress } from "./FlowProgress.jsx";
 
-const steps = ["Basics", "Game", "Access"];
+const steps = ["Basics", "Questions", "Setup", "Review"];
 const stepCopy = [
   { eyebrow: "Make it yours", title: "Name the gathering", description: "Give everyone a room to recognize and tell us what to call you." },
-  { eyebrow: "Set the game", title: "Choose the chaos", description: "Pick a question pack and tune the pace for your group." },
-  { eyebrow: "Invite your people", title: "Open door or secret knock?", description: "Keep it effortless, or protect the room with a password included in its invite link." },
+  { eyebrow: "Choose the questions", title: "Choose the deck", description: "Browse the collection, pick a mood, or bring a question set of your own." },
+  { eyebrow: "Tune the room", title: "Set the pace and password", description: "Choose the room size, round timing, and the secret your guests will use to join." },
+  { eyebrow: "Everything looks good", title: "Ready to create", description: "Take one last look. Your room will open as soon as you continue." },
 ];
 
 export function CreateForm({ busy, submit, packs, catalogError, playerName, onPlayerNameChange }) {
   const [step, setStep] = useState(0);
-  const [privateRoom, setPrivateRoom] = useState(false);
   const [values, setValues] = useState({
     roomName: "Friday suspects", password: "", playerLimit: 8,
     answerSeconds: 60, discussionSeconds: 120, votingSeconds: 45, rounds: 5, pack: "",
@@ -60,7 +60,7 @@ export function CreateForm({ busy, submit, packs, catalogError, playerName, onPl
       return;
     }
     const payload = {
-      name: values.roomName.trim(), password: privateRoom ? values.password : "", host_name: playerName.trim(),
+      name: values.roomName.trim(), password: values.password, host_name: playerName.trim(),
       settings: {
         player_limit: Number(values.playerLimit), answer_seconds: Number(values.answerSeconds),
         discussion_seconds: Number(values.discussionSeconds), voting_seconds: Number(values.votingSeconds),
@@ -76,7 +76,9 @@ export function CreateForm({ busy, submit, packs, catalogError, playerName, onPl
     ? Boolean(values.roomName.trim() && playerName.trim())
     : step === 1
       ? Boolean(customQuestions || values.pack)
-      : !privateRoom || Boolean(values.password);
+      : step === 2
+        ? Boolean(values.password)
+        : true;
   const copy = stepCopy[step];
 
   return (
@@ -92,22 +94,33 @@ export function CreateForm({ busy, submit, packs, catalogError, playerName, onPl
       )}
 
       {step === 1 && (
-        <section className="flow-step" aria-label="Game setup">
+        <section className="flow-step question-pack-step" aria-label="Question pack selection">
           <fieldset className="field field-group">
-            <legend>Question pack</legend>
-            <div className="pack-grid">
-              {packs.map((pack) => (
-                <button type="button" key={pack.id} className={`pack-choice ${!customQuestions && values.pack === pack.id ? "selected" : ""}`} onClick={() => selectPack(pack)} aria-pressed={!customQuestions && values.pack === pack.id}>
-                  <span>{pack.name}</span><small>{pack.description}</small>
-                </button>
-              ))}
-              <button type="button" className={`pack-choice upload-choice ${customQuestions ? "selected" : ""}`} onClick={() => fileRef.current?.click()} aria-pressed={Boolean(customQuestions)}>
-                <span>{customQuestions ? `${customQuestions.length} custom pairs` : "Upload JSON"}</span><small>Bring your own real and odd questions.</small>
-              </button>
-              <input ref={fileRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={uploadQuestions} />
+            <legend className="visually-hidden">Question pack</legend>
+            <div className="pack-options-heading">
+              <div><span className="card-label">Question packs</span><strong>Choose one for this room</strong></div>
+              <small>{packs.length + 1} options</small>
             </div>
+            <div className="question-pack-options" role="group" aria-label="Available question packs">
+              {packs.map((pack, index) => (
+                <label key={pack.id} className={`pack-browser-option ${!customQuestions && values.pack === pack.id ? "selected" : ""}`}>
+                  <input type="radio" name="question-pack" checked={!customQuestions && values.pack === pack.id} onChange={() => selectPack(pack)} />
+                  <i>{String(index + 1).padStart(2, "0")}</i><span><strong>{pack.name}</strong><small>{pack.description} · {pack.question_count} questions</small></span>
+                </label>
+              ))}
+              <button type="button" className={`pack-browser-option upload-pack-option ${customQuestions ? "selected" : ""}`} onClick={() => fileRef.current?.click()} aria-label={customQuestions ? "Custom questions: choose another file" : "Upload"} aria-pressed={Boolean(customQuestions)}>
+                <i>{customQuestions ? "★" : "+"}</i>
+                <span><strong>{customQuestions ? "Custom questions" : "Upload"}</strong><small>{customQuestions ? `${customQuestions.length} pairs · Choose another file` : "Use your own JSON question set"}</small></span>
+              </button>
+            </div>
+            <input ref={fileRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={uploadQuestions} />
           </fieldset>
           {catalogError && <p className="form-error" role="alert">Built-in packs could not be loaded. You can still upload a custom pack.</p>}
+        </section>
+      )}
+
+      {step === 2 && (
+        <section className="flow-step" aria-label="Room setup">
           <div className="settings-card">
             <div><span className="card-label">Room settings</span><strong>Fine-tune the pace</strong></div>
             <div className="settings-strip">
@@ -117,37 +130,39 @@ export function CreateForm({ busy, submit, packs, catalogError, playerName, onPl
               <Field label="Discuss"><select value={values.discussionSeconds} onChange={update("discussionSeconds")}><option value="60">1 min</option><option value="120">2 min</option><option value="180">3 min</option><option value="300">5 min</option></select></Field>
             </div>
           </div>
+          <div className="private-room-card">
+            <div className="private-room-heading">
+              <span className="access-icon">✦</span>
+              <div><strong>Password protected</strong><small>Every room is private. The invite link carries the password for your guests.</small></div>
+            </div>
+            <div className="private-password-field">
+              <Field label="Room password"><input type="password" value={values.password} onChange={update("password")} maxLength={100} placeholder="Choose a secret knock" autoFocus required /></Field>
+              <p>Guests using the invite link get access automatically.</p>
+            </div>
+          </div>
         </section>
       )}
 
-      {step === 2 && (
-        <section className="flow-step" aria-label="Room access">
-          <div className="access-grid">
-            <button type="button" className={`access-choice ${!privateRoom ? "selected" : ""}`} onClick={() => setPrivateRoom(false)} aria-pressed={!privateRoom}>
-              <span className="access-icon">↗</span><strong>Open room</strong><small>Anyone with the room name or link can join.</small>
-            </button>
-            <button type="button" className={`access-choice ${privateRoom ? "selected" : ""}`} onClick={() => setPrivateRoom(true)} aria-pressed={privateRoom}>
-              <span className="access-icon">✦</span><strong>Private room</strong><small>The invite link carries the password for your guests.</small>
-            </button>
+      {step === 3 && (
+        <section className="flow-step ready-step" aria-label="Ready to create">
+          <div className="ready-hero">
+            <span>✓</span>
+            <div><p className="kicker">Room ready</p><h3>{values.roomName}</h3><p>Hosted by {playerName}</p></div>
           </div>
-          {privateRoom && (
-            <div className="password-card">
-              <Field label="Room password"><input type="password" value={values.password} onChange={update("password")} maxLength={100} placeholder="Choose a secret knock" autoFocus required /></Field>
-              <p>Anyone opening your invite link gets access automatically. People joining by room name will be asked for this password.</p>
-            </div>
-          )}
-          <div className="room-review">
-            <span className="card-label">Ready to create</span>
-            <strong>{values.roomName}</strong>
-            <p>{playerName} · {values.rounds} rounds · up to {values.playerLimit} players · {privateRoom ? "private" : "open"}</p>
-          </div>
+          <dl className="ready-details">
+            <div><dt>Questions</dt><dd>{customQuestions ? `${customQuestions.length} custom pairs` : selectedPack?.name}</dd></div>
+            <div><dt>Game</dt><dd>{values.rounds} rounds · {values.playerLimit} players</dd></div>
+            <div><dt>Timing</dt><dd>{values.answerSeconds}s answer · {values.discussionSeconds}s discuss</dd></div>
+            <div><dt>Access</dt><dd>Password protected</dd></div>
+          </dl>
+          <p className="ready-note">You can adjust room settings later from the host controls.</p>
         </section>
       )}
 
       <div className="flow-actions">
         {step > 0 && <button type="button" className="text-button" onClick={() => setStep((current) => current - 1)}>← Back</button>}
         <button className="primary-button" disabled={busy || !canContinue}>
-          {busy ? "Building your room…" : step === 0 ? "Continue to game" : step === 1 ? "Continue to access" : "Create room"}<span aria-hidden="true">→</span>
+          {busy ? "Building your room…" : step === 0 ? "Continue to questions" : step === 1 ? "Continue to setup" : step === 2 ? "Review room" : "Create room"}<span aria-hidden="true">→</span>
         </button>
       </div>
     </form>

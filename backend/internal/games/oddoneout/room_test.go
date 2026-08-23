@@ -177,6 +177,14 @@ func TestLongUnicodePassword(t *testing.T) {
 	}
 }
 
+func TestRoomRequiresPassword(t *testing.T) {
+	params := testRoomParams()
+	params.Password = ""
+	if _, _, err := NewRoom(params); err == nil {
+		t.Fatal("NewRoom(empty password) succeeded")
+	}
+}
+
 func TestRoomIDMustBeURLSafe(t *testing.T) {
 	for _, roomID := range []string{"", "room/escape", "room with spaces", strings.Repeat("x", 101)} {
 		params := testRoomParams()

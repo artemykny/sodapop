@@ -6,10 +6,9 @@ game is Odd One Out.
 The join form searches authoritative game-server state after two typed
 characters and suggests only lobby rooms that still have player capacity.
 Suggestions include their game identity so the same UI can list future games.
-Room creation and joining use progressive steps. The coordinator exposes a
-boolean protected-room flag so open rooms skip the password step entirely.
-Protected invite links include the room password and should be treated as
-private access links; guests joining by room name are prompted for the password.
+Room creation and joining use progressive steps. Every room requires a
+password. Invite links include that password and should be treated as private
+access links; guests joining by room name are prompted for it.
 
 Built-in question text is owned by the backend. The client loads only question
 pack metadata from the coordinator and sends the selected `question_pack` ID

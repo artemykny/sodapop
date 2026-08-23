@@ -16,7 +16,10 @@ async function request(url, options = {}) {
 
   const body = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(body?.detail || body?.message || "Something went wrong. Please try again.");
+    const error = new Error(body?.detail || body?.message || "Something went wrong. Please try again.");
+    error.code = body?.code || "request_failed";
+    error.status = response.status;
+    throw error;
   }
   return body;
 }

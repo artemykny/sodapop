@@ -79,12 +79,15 @@ test("room name autocomplete finds joinable rooms after a partial match", async 
     await guest.getByRole("tab", { name: "Join a room" }).click();
     await guest.getByLabel("Room name").fill("Auto");
     const suggestion = guest.getByRole("option").filter({ hasText: roomName });
-    await expect(suggestion).toContainText("Open");
+    await expect(suggestion).toContainText("Protected");
 
     await suggestion.click();
+    await expect(suggestion).toHaveClass(/selected/);
     await guest.getByRole("button", { name: "Continue", exact: true }).click();
+    await guest.getByLabel("Password").fill("room-secret");
+    await expect(guest.getByLabel("Your display name")).toHaveCount(0);
+    await guest.getByRole("button", { name: "Continue to name" }).click();
     await guest.getByLabel("Your display name").fill("Autocomplete Guest");
-    await expect(guest.getByLabel("Password")).toHaveCount(0);
     await guest.getByRole("button", { name: "Join room" }).click();
     await expect(guest.getByRole("heading", { name: "The room is open" })).toBeVisible();
   } finally {
@@ -97,8 +100,9 @@ test("accepts custom questions as write-only room input", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Room name").fill(roomName);
   await page.getByLabel("Your name").fill("Uploader");
-  await page.getByRole("button", { name: "Continue to game" }).click();
-  await expect(page.getByRole("button", { name: "Classic mix" })).toBeVisible();
+  await page.getByRole("button", { name: "Continue to questions" }).click();
+  await expect(page.getByRole("radio", { name: "Classic mix" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({
     name: "custom-questions.json",
     mimeType: "application/json",
@@ -106,9 +110,12 @@ test("accepts custom questions as write-only room input", async ({ page }) => {
       { real: "Custom real question?", fake: "Custom fake question?" },
     ])),
   });
-  await expect(page.getByRole("button", { name: /1 custom pairs/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Custom questions/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Continue to setup" }).click();
   await page.getByLabel("Rounds").fill("1");
-  await page.getByRole("button", { name: "Continue to access" }).click();
+  await page.getByLabel("Room password").fill("custom-secret");
+  await page.getByRole("button", { name: "Review room" }).click();
+  await expect(page.getByRole("region", { name: "Ready to create" })).toContainText("1 custom pairs");
   await page.getByRole("button", { name: "Create room" }).click();
   await expect(page.getByRole("heading", { name: "The room is open" })).toBeVisible();
 
@@ -135,8 +142,13 @@ test("protected invites include access while manual joins request a password", a
   try {
     await invitedGuest.goto(tamperedInvite.toString());
     await expect(invitedGuest.getByRole("tab", { name: "Join a room" })).toHaveAttribute("aria-selected", "true");
-    await expect(invitedGuest.getByLabel("Room name")).toHaveValue(roomName);
-    await invitedGuest.getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(invitedGuest.getByLabel("Room name")).toHaveCount(0);
+    await expect(invitedGuest.getByLabel("Your display name")).toBeVisible();
+    const inviteProgress = invitedGuest.getByRole("list", { name: "Progress" });
+    await expect(inviteProgress.locator("li")).toHaveCount(3);
+    await expect(inviteProgress.locator("li").nth(0)).toHaveClass(/complete/);
+    await expect(inviteProgress.locator("li").nth(1)).toHaveClass(/complete/);
+    await expect(inviteProgress.locator("li").nth(2)).toHaveClass(/active/);
     await invitedGuest.getByLabel("Your display name").fill("Invited Guest");
     await expect(invitedGuest.getByText("Access included")).toBeVisible();
     await expect(invitedGuest.getByLabel("Password")).toHaveCount(0);
@@ -153,13 +165,21 @@ test("protected invites include access while manual joins request a password", a
     await manualGuest.getByRole("tab", { name: "Join a room" }).click();
     await manualGuest.getByLabel("Room name").fill(roomName);
     await manualGuest.getByRole("button", { name: "Continue", exact: true }).click();
-    await manualGuest.getByLabel("Your display name").fill("Manual Guest");
-    await expect(manualGuest.getByLabel("Password")).toHaveCount(0);
-    await manualGuest.getByRole("button", { name: "Continue to password" }).click();
+    await expect(manualGuest.getByLabel("Your display name")).toHaveCount(0);
     await manualGuest.getByLabel("Password").fill("wrong password");
+    await manualGuest.getByRole("button", { name: "Continue to name" }).click();
+    await manualGuest.getByLabel("Your display name").fill("Manual Guest");
     await manualGuest.getByRole("button", { name: "Join room" }).click();
     await expect(manualGuest.getByRole("alert")).toContainText("invalid room password");
     await manualGuest.getByLabel("Password").fill("correct horse");
+    await manualGuest.getByRole("button", { name: "Continue to name" }).click();
+    await expect(manualGuest.getByLabel("Your display name")).toHaveValue("Manual Guest");
+    await manualGuest.getByLabel("Your display name").fill("Invited Guest");
+    await manualGuest.getByRole("button", { name: "Join room" }).click();
+    await expect(manualGuest.getByRole("alert")).toContainText("display name is already in use");
+    await expect(manualGuest.getByLabel("Your display name")).toBeVisible();
+    await expect(manualGuest.getByLabel("Password")).toHaveCount(0);
+    await manualGuest.getByLabel("Your display name").fill("Manual Guest");
     await manualGuest.getByRole("button", { name: "Join room" }).click();
     await expect(manualGuest.getByRole("heading", { name: "The room is open" })).toBeVisible();
     await expect(page.getByText("3 / 8 players", { exact: true })).toBeVisible();

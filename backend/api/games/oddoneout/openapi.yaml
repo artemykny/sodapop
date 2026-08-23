@@ -188,6 +188,7 @@ components:
           maxLength: 60
         password:
           type: string
+          minLength: 1
           maxLength: 100
         host_name:
           type: string

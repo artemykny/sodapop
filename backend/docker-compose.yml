@@ -1,0 +1,20 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      PORT: "80"
+      GAME_SERVERS: ${GAME_SERVERS:?}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?}
+
+  game-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.game
+    environment:
+      PORT: "80"
+      DATABASE_URL: ${DATABASE_URL:?}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?}

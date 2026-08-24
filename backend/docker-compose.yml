@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.api
     environment:
-      PORT: "80"
+      PORT: "8080"
       GAME_SERVERS: ${GAME_SERVERS:?}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?}
@@ -14,7 +14,7 @@ services:
       context: .
       dockerfile: Dockerfile.game
     environment:
-      PORT: "80"
+      PORT: "8081"
       DATABASE_URL: ${DATABASE_URL:?}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?}

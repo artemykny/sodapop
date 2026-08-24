@@ -18,10 +18,10 @@ paths:
   /v1/question-packs:
     get:
       operationId: listQuestionPacks
-      summary: List built-in question-pack metadata
+      summary: List configured question-pack metadata
       responses:
         "200":
-          description: Available built-in packs; question text remains server-side
+          description: Available packs; question text remains server-side
           content:
             application/json:
               schema:
@@ -43,6 +43,39 @@ paths:
           $ref: "#/components/responses/Problem"
         "503":
           $ref: "#/components/responses/Problem"
+  /v1/admin/question-packs/{packId}:
+    parameters:
+      - name: packId
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 60
+    put:
+      operationId: saveQuestionPack
+      summary: Create or replace an Odd One Out pack on every game-server instance
+      security:
+        - adminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./games/oddoneout/openapi.yaml#/components/schemas/QuestionPackInput"
+      responses:
+        "200": { description: Pack saved on every available host }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "502": { $ref: "#/components/responses/Problem" }
+    delete:
+      operationId: deleteQuestionPack
+      summary: Delete an Odd One Out pack from every game-server instance
+      security:
+        - adminBearerAuth: []
+      responses:
+        "204": { description: Pack deleted }
+        "401": { $ref: "#/components/responses/Problem" }
+        "502": { $ref: "#/components/responses/Problem" }
   /v1/rooms:
     post:
       operationId: createRoom

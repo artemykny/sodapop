@@ -77,6 +77,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /v1/question-packs", s.questionPacks)
 	mux.HandleFunc("GET /v1/admin/overview", s.adminOverview)
+	mux.HandleFunc("PUT /v1/admin/question-packs/{packID}", s.saveQuestionPack)
+	mux.HandleFunc("DELETE /v1/admin/question-packs/{packID}", s.deleteQuestionPack)
 	mux.HandleFunc("GET /v1/rooms/search", s.searchRooms)
 	mux.HandleFunc("POST /v1/rooms", s.createRoom)
 	mux.HandleFunc("GET /v1/rooms/{roomID}", s.resolveByID)
@@ -387,6 +389,104 @@ func (s *Server) questionPacks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	copyResponse(w, response.StatusCode, response.Header.Get("Content-Type"), body)
+}
+
+type adminMutationResult struct {
+	status int
+	body   []byte
+	err    error
+}
+
+func (s *Server) saveQuestionPack(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuth.Require(w, r) {
+		return
+	}
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	if err != nil {
+		writeProblem(w, http.StatusBadRequest, "invalid_request", "request body is too large")
+		return
+	}
+	if !json.Valid(body) {
+		writeProblem(w, http.StatusBadRequest, "invalid_request", "request body must be valid JSON")
+		return
+	}
+	s.proxyAdminPackMutation(w, r, http.MethodPut, body)
+}
+
+func (s *Server) deleteQuestionPack(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuth.Require(w, r) {
+		return
+	}
+	s.proxyAdminPackMutation(w, r, http.MethodDelete, nil)
+}
+
+func (s *Server) proxyAdminPackMutation(w http.ResponseWriter, r *http.Request, method string, body []byte) {
+	results := make(chan adminMutationResult, len(s.gameServers))
+	endpointPath := "/v1/admin/question-packs/" + url.PathEscape(r.PathValue("packID"))
+	for _, serverURL := range s.gameServers {
+		go func() {
+			var reader io.Reader
+			if body != nil {
+				reader = bytes.NewReader(body)
+			}
+			request, err := http.NewRequestWithContext(r.Context(), method, serverURL+endpointPath, reader)
+			if err != nil {
+				results <- adminMutationResult{err: err}
+				return
+			}
+			request.Header.Set("Authorization", r.Header.Get("Authorization"))
+			if body != nil {
+				request.Header.Set("Content-Type", "application/json")
+			}
+			response, err := s.client.Do(request)
+			if err != nil {
+				results <- adminMutationResult{err: err}
+				return
+			}
+			defer response.Body.Close()
+			responseBody, err := io.ReadAll(io.LimitReader(response.Body, maxBodyBytes+1))
+			if err != nil || len(responseBody) > maxBodyBytes {
+				results <- adminMutationResult{err: errors.New("invalid game server response")}
+				return
+			}
+			results <- adminMutationResult{status: response.StatusCode, body: responseBody}
+		}()
+	}
+
+	successes := 0
+	notFound := 0
+	var firstFailure adminMutationResult
+	for range s.gameServers {
+		result := <-results
+		if result.status >= 200 && result.status < 300 {
+			successes++
+			continue
+		}
+		if result.status == http.StatusNotFound {
+			notFound++
+			continue
+		}
+		if firstFailure.status == 0 && firstFailure.err == nil {
+			firstFailure = result
+		}
+	}
+	if firstFailure.status != 0 {
+		copyResponse(w, firstFailure.status, "application/problem+json", firstFailure.body)
+		return
+	}
+	if firstFailure.err != nil {
+		writeProblem(w, http.StatusBadGateway, "game_server_unavailable", "question pack could not be updated on every game server")
+		return
+	}
+	if successes == 0 && notFound == len(s.gameServers) {
+		writeProblem(w, http.StatusNotFound, "question_pack_endpoint_not_found", "no configured game server supports question packs")
+		return
+	}
+	if method == http.MethodDelete {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	copyResponse(w, http.StatusOK, "application/json", body)
 }
 
 func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {

@@ -1,14 +1,23 @@
 package coordinator
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/ak/sodapop/backend/internal/adminapi"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
 
 func TestCreateAndResolveRoom(t *testing.T) {
 	gameServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -231,5 +240,45 @@ func TestQuestionPacks(t *testing.T) {
 	}
 	if len(response.Packs) == 0 || response.Packs[0].ID == "" || response.Packs[0].QuestionCount == 0 {
 		t.Fatalf("question packs = %+v", response.Packs)
+	}
+}
+
+func TestAdminQuestionPackMutationPropagatesToInstances(t *testing.T) {
+	password := "admin-secret"
+	requests := make([]string, 0)
+	var requestsMu sync.Mutex
+	client := &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if request.Header.Get("Authorization") != "Bearer "+password {
+			t.Errorf("authorization = %q", request.Header.Get("Authorization"))
+		}
+		body, _ := io.ReadAll(request.Body)
+		requestsMu.Lock()
+		requests = append(requests, request.Method+" "+request.URL.String()+" "+string(body))
+		requestsMu.Unlock()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(bytes.NewReader(body)),
+		}, nil
+	})}
+	coordinator, err := New([]string{"http://game-one.test", "http://game-two.test"}, client, nil, nil, password)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	body := `{"id":"team-retreat","name":"Team retreat","questions":[{"real":"A","fake":"B"}]}`
+	request := httptest.NewRequest(http.MethodPut, "/v1/admin/question-packs/team-retreat", strings.NewReader(body))
+	request.Header.Set("Authorization", "Bearer "+password)
+	recorder := httptest.NewRecorder()
+	coordinator.Handler().ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if len(requests) != 2 {
+		t.Fatalf("propagated requests = %v", requests)
+	}
+	for _, got := range requests {
+		if !strings.Contains(got, "/v1/admin/question-packs/team-retreat") || !strings.Contains(got, body) {
+			t.Errorf("propagated request = %q", got)
+		}
 	}
 }

@@ -42,7 +42,7 @@ test("loads backend-owned pack metadata and creates a room", async ({ page, requ
   await expect(page.getByRole("heading", { name: "The room is open" })).toBeVisible();
 });
 
-test("admin dashboard rejects a wrong password and aggregates game information", async ({ page }) => {
+test("admin dashboard authenticates and configures question packs", async ({ page, request }) => {
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "Admin console" })).toBeVisible();
 
@@ -58,12 +58,52 @@ test("admin dashboard rejects a wrong password and aggregates game information",
   await expect(page.getByText("Classic mix", { exact: true })).toBeVisible();
   await expect(page.getByText("After hours", { exact: true })).toBeVisible();
   await expect(page.getByText("What is the best pizza topping?", { exact: true })).toBeHidden();
-  await page.locator(".admin-pack-list > li").filter({ hasText: "Classic mix" }).getByRole("button", { name: "Open pack" }).click();
-  await expect(page.getByRole("dialog", { name: "Classic mix" })).toBeVisible();
-  await expect(page.getByText("What is the best pizza topping?", { exact: true })).toBeVisible();
-  await expect(page.getByText("What is the worst pizza topping?", { exact: true })).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Classic mix" })).toBeHidden();
+  await page.locator(".admin-pack-row").filter({ hasText: "Classic mix" }).click();
+  const details = page.getByRole("dialog", { name: "Classic mix" });
+  await expect(details).toContainText("What is the best pizza topping?");
+  await expect(details).toContainText("What is the worst pizza topping?");
+  await details.getByRole("button", { name: "Edit JSON" }).click();
+  const editor = page.getByRole("dialog", { name: "Edit JSON" });
+  const jsonField = editor.getByLabel("Question pack JSON");
+  await expect(jsonField).toHaveValue(/"id": "classic"/);
+  await expect(jsonField).toHaveValue(/"real": "What is the best pizza topping\?"/);
+
+  const downloadPromise = page.waitForEvent("download");
+  await editor.getByRole("button", { name: /Export JSON/ }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("classic.json");
+  let exportedContent = "";
+  for await (const chunk of await download.createReadStream()) exportedContent += chunk.toString();
+  expect(JSON.parse(exportedContent)).toEqual(expect.objectContaining({
+    id: "classic",
+    name: "Classic mix",
+    questions: expect.arrayContaining([expect.objectContaining({ real: "What is the best pizza topping?", fake: "What is the worst pizza topping?" })]),
+  }));
+
+  await editor.locator('input[type="file"]').setInputFiles({
+    name: "admin-e2e-pack.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({
+      id: "admin-e2e-pack",
+      name: "Admin E2E pack",
+      description: "Created from imported JSON",
+      questions: [{ real: "Best test snack?", fake: "Worst test snack?" }],
+    })),
+  });
+  await expect(jsonField).toHaveValue(/"id":"admin-e2e-pack"/);
+  await expect(jsonField).toHaveValue(/"real":"Best test snack\?"/);
+  await editor.getByRole("button", { name: "Save changes" }).click();
+  await expect(editor).toBeHidden();
+  await expect(page.getByText("Admin E2E pack", { exact: true })).toBeVisible();
+
+  const catalogResponse = await request.get("http://127.0.0.1:18080/v1/question-packs");
+  const catalog = await catalogResponse.json();
+  expect(catalog.packs).toEqual(expect.arrayContaining([expect.objectContaining({ id: "admin-e2e-pack", question_count: 1 })]));
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator(".admin-pack-row").filter({ hasText: "Admin E2E pack" }).click();
+  await page.getByRole("dialog", { name: "Admin E2E pack" }).getByRole("button", { name: "Delete pack" }).click();
+  await expect(page.getByText("Admin E2E pack", { exact: true })).toBeHidden();
   await page.getByRole("button", { name: /General/ }).click();
   await expect(page.getByText("oddoneout", { exact: true })).toBeVisible();
 });

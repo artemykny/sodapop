@@ -26,6 +26,7 @@ const maxRoomSuggestions = 10
 
 type Server struct {
 	manager        *game.Manager
+	packStore      questionpacks.Store
 	logger         *slog.Logger
 	allowedOrigins []string
 	originPatterns []string
@@ -36,11 +37,18 @@ type Server struct {
 }
 
 func New(manager *game.Manager, logger *slog.Logger, originPatterns []string, adminPassword string) *Server {
+	return NewWithQuestionPacks(manager, questionpacks.NewMemoryStore(questionpacks.Builtins()), logger, originPatterns, adminPassword)
+}
+
+func NewWithQuestionPacks(manager *game.Manager, packs questionpacks.Store, logger *slog.Logger, originPatterns []string, adminPassword string) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
+	if packs == nil {
+		packs = questionpacks.NewMemoryStore(questionpacks.Builtins())
+	}
 	return &Server{
-		manager: manager, logger: logger, allowedOrigins: slices.Clone(originPatterns),
+		manager: manager, packStore: packs, logger: logger, allowedOrigins: slices.Clone(originPatterns),
 		originPatterns: middleware.OriginHostPatterns(originPatterns),
 		adminAuth:      adminapi.NewAuth(adminPassword),
 		connections:    make(map[string]int),
@@ -53,6 +61,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/question-packs", s.questionPacks)
 	mux.HandleFunc("GET /v1/rooms/search", s.searchRooms)
 	mux.HandleFunc("GET /v1/admin/stats", s.adminStats)
+	mux.HandleFunc("PUT /v1/admin/question-packs/{packID}", s.saveQuestionPack)
+	mux.HandleFunc("DELETE /v1/admin/question-packs/{packID}", s.deleteQuestionPack)
 	mux.HandleFunc("POST /v1/rooms", s.createRoom)
 	mux.HandleFunc("GET /v1/rooms/{roomID}", s.getRoom)
 	mux.HandleFunc("POST /v1/rooms/{roomID}/players", s.joinRoom)
@@ -96,7 +106,12 @@ func (s *Server) adminStats(w http.ResponseWriter, r *http.Request) {
 	for phase, count := range stats.RoomsByPhase {
 		byPhase[string(phase)] = count
 	}
-	packs := questionpacks.All()
+	packs, err := s.packStore.ListQuestionPacks(r.Context())
+	if err != nil {
+		s.logger.Error("list question packs for admin", "error", err)
+		writeProblem(w, http.StatusInternalServerError, "question_catalog_unavailable", "question packs could not be loaded")
+		return
+	}
 	packStats := make([]adminapi.QuestionPack, 0, len(packs))
 	for _, pack := range packs {
 		items := make([]adminapi.PackItem, 0, len(pack.Questions))
@@ -148,8 +163,20 @@ func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func (s *Server) questionPacks(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"packs": questionpacks.List()})
+func (s *Server) questionPacks(w http.ResponseWriter, r *http.Request) {
+	packs, err := s.packStore.ListQuestionPacks(r.Context())
+	if err != nil {
+		s.logger.Error("list question packs", "error", err)
+		writeProblem(w, http.StatusInternalServerError, "question_catalog_unavailable", "question packs could not be loaded")
+		return
+	}
+	metadata := make([]questionpacks.Metadata, 0, len(packs))
+	for _, pack := range packs {
+		metadata = append(metadata, questionpacks.Metadata{
+			ID: pack.ID, Name: pack.Name, Description: pack.Description, QuestionCount: len(pack.Questions),
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"packs": metadata})
 }
 
 func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +185,7 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
-	questions, err := roomQuestions(request.QuestionPack, request.Questions)
+	questions, err := s.roomQuestions(r.Context(), request.QuestionPack, request.Questions)
 	if err != nil {
 		writeProblem(w, http.StatusBadRequest, "invalid_question_source", err.Error())
 		return
@@ -177,14 +204,17 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func roomQuestions(packID string, custom []game.Question) ([]game.Question, error) {
+func (s *Server) roomQuestions(ctx context.Context, packID string, custom []game.Question) ([]game.Question, error) {
 	if packID != "" && len(custom) > 0 {
 		return nil, errors.New("choose either question_pack or custom questions")
 	}
 	if packID != "" {
-		pack, ok := questionpacks.Get(packID)
-		if !ok {
+		pack, err := s.packStore.GetQuestionPack(ctx, packID)
+		if errors.Is(err, questionpacks.ErrNotFound) {
 			return nil, fmt.Errorf("question pack %q was not found", packID)
+		}
+		if err != nil {
+			return nil, errors.New("question catalog is unavailable")
 		}
 		return pack.Questions, nil
 	}
@@ -192,6 +222,46 @@ func roomQuestions(packID string, custom []game.Question) ([]game.Question, erro
 		return nil, errors.New("question_pack or custom questions are required")
 	}
 	return custom, nil
+}
+
+func (s *Server) saveQuestionPack(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuth.Require(w, r) {
+		return
+	}
+	var pack questionpacks.Pack
+	if err := decodeJSON(w, r, &pack); err != nil {
+		writeProblem(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	pack.ID = r.PathValue("packID")
+	pack = questionpacks.Normalize(pack)
+	if err := questionpacks.Validate(pack); err != nil {
+		writeProblem(w, http.StatusBadRequest, "invalid_question_pack", err.Error())
+		return
+	}
+	if err := s.packStore.SaveQuestionPack(r.Context(), pack); err != nil {
+		s.logger.Error("save question pack", "pack_id", pack.ID, "error", err)
+		writeProblem(w, http.StatusInternalServerError, "question_pack_save_failed", "question pack could not be saved")
+		return
+	}
+	writeJSON(w, http.StatusOK, pack)
+}
+
+func (s *Server) deleteQuestionPack(w http.ResponseWriter, r *http.Request) {
+	if !s.adminAuth.Require(w, r) {
+		return
+	}
+	id := r.PathValue("packID")
+	if err := s.packStore.DeleteQuestionPack(r.Context(), id); err != nil {
+		if errors.Is(err, questionpacks.ErrNotFound) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		s.logger.Error("delete question pack", "pack_id", id, "error", err)
+		writeProblem(w, http.StatusInternalServerError, "question_pack_delete_failed", "question pack could not be deleted")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {

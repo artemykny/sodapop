@@ -15,6 +15,7 @@ import (
 
 	"github.com/ak/sodapop/backend/internal/adminapi"
 	game "github.com/ak/sodapop/backend/internal/games/oddoneout"
+	"github.com/ak/sodapop/backend/internal/games/oddoneout/questionpacks"
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 )
@@ -142,6 +143,61 @@ func TestQuestionPacksAndInvalidSelection(t *testing.T) {
 	defer invalid.Body.Close()
 	if invalid.StatusCode != http.StatusBadRequest {
 		t.Fatalf("POST invalid pack status = %d, want %d", invalid.StatusCode, http.StatusBadRequest)
+	}
+}
+
+func TestAdminCanConfigureQuestionPacks(t *testing.T) {
+	manager := game.NewManager(nil, nil)
+	t.Cleanup(manager.Close)
+	store := questionpacks.NewMemoryStore(questionpacks.Builtins())
+	handler := NewWithQuestionPacks(manager, store, nil, nil, "admin-secret").Handler()
+	body := `{"name":"Team retreat","description":"For coworkers","questions":[{"real":"Best office snack?","fake":"Worst office snack?"}]}`
+	request := httptest.NewRequest(http.MethodPut, "/v1/admin/question-packs/team-retreat", strings.NewReader(body))
+	request.Header.Set("Authorization", "Bearer admin-secret")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("PUT status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	pack, err := store.GetQuestionPack(context.Background(), "team-retreat")
+	if err != nil || pack.Name != "Team retreat" || len(pack.Questions) != 1 {
+		t.Fatalf("saved pack = %+v, %v", pack, err)
+	}
+
+	request = httptest.NewRequest(http.MethodDelete, "/v1/admin/question-packs/team-retreat", nil)
+	request.Header.Set("Authorization", "Bearer admin-secret")
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("DELETE status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if _, err := store.GetQuestionPack(context.Background(), "team-retreat"); !errors.Is(err, questionpacks.ErrNotFound) {
+		t.Fatalf("deleted pack error = %v", err)
+	}
+}
+
+func TestAdminQuestionPackValidationAndAuth(t *testing.T) {
+	manager := game.NewManager(nil, nil)
+	t.Cleanup(manager.Close)
+	handler := New(manager, nil, nil, "admin-secret").Handler()
+	for _, test := range []struct {
+		name   string
+		auth   string
+		body   string
+		status int
+	}{
+		{name: "unauthorized", body: `{}`, status: http.StatusUnauthorized},
+		{name: "invalid", auth: "Bearer admin-secret", body: `{"name":"Empty","questions":[]}`, status: http.StatusBadRequest},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPut, "/v1/admin/question-packs/test", strings.NewReader(test.body))
+			request.Header.Set("Authorization", test.auth)
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, request)
+			if recorder.Code != test.status {
+				t.Fatalf("status = %d, want %d: %s", recorder.Code, test.status, recorder.Body.String())
+			}
+		})
 	}
 }
 

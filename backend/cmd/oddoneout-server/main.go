@@ -10,6 +10,7 @@ import (
 	"github.com/ak/sodapop/backend/internal/appserver"
 	"github.com/ak/sodapop/backend/internal/games/oddoneout"
 	"github.com/ak/sodapop/backend/internal/games/oddoneout/httpapi"
+	"github.com/ak/sodapop/backend/internal/games/oddoneout/questionpacks"
 	"github.com/ak/sodapop/backend/internal/snapshot"
 	"github.com/ak/sodapop/backend/internal/storage"
 )
@@ -17,18 +18,26 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	var snapshotStore snapshot.Store
+	var packStore questionpacks.Store = questionpacks.NewMemoryStore(questionpacks.Builtins())
 	var postgres *storage.Postgres
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		var err error
 		postgres, err = storage.OpenPostgres(ctx, databaseURL)
-		cancel()
 		if err != nil {
+			cancel()
 			logger.Error("initialize postgres", "error", err)
 			os.Exit(1)
 		}
 		defer postgres.Close()
 		snapshotStore = postgres
+		if err := postgres.SeedQuestionPacks(ctx, questionpacks.Builtins()); err != nil {
+			cancel()
+			logger.Error("seed question packs", "error", err)
+			os.Exit(1)
+		}
+		cancel()
+		packStore = postgres
 	} else {
 		logger.Warn("DATABASE_URL is unset; room snapshots will not be persisted")
 	}
@@ -36,7 +45,7 @@ func main() {
 	manager := oddoneout.NewManager(snapshotStore, logger)
 	defer manager.Close()
 	origins := splitList(os.Getenv("ALLOWED_ORIGINS"))
-	handler := httpapi.New(manager, logger, origins, os.Getenv("ADMIN_PASSWORD")).Handler()
+	handler := httpapi.NewWithQuestionPacks(manager, packStore, logger, origins, os.Getenv("ADMIN_PASSWORD")).Handler()
 	if err := appserver.Run(address("8081"), handler, logger); err != nil {
 		logger.Error("game server stopped", "error", err)
 		os.Exit(1)

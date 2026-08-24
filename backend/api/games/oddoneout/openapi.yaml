@@ -22,10 +22,10 @@ paths:
   /v1/question-packs:
     get:
       operationId: listQuestionPacksOnGameServer
-      summary: List built-in question-pack metadata
+      summary: List configured question-pack metadata
       responses:
         "200":
-          description: Available built-in packs; question text remains server-side
+          description: Available packs; question text remains server-side
           content:
             application/json:
               schema:
@@ -46,6 +46,41 @@ paths:
         "401":
           $ref: "#/components/responses/Problem"
         "503":
+          $ref: "#/components/responses/Problem"
+  /v1/admin/question-packs/{packId}:
+    parameters:
+      - $ref: "#/components/parameters/PackId"
+    put:
+      operationId: saveOddOneOutQuestionPack
+      summary: Create or replace a question pack
+      security:
+        - adminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionPackInput"
+      responses:
+        "200":
+          description: Pack saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionPackInput"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteOddOneOutQuestionPack
+      summary: Delete a question pack; existing rooms retain their copied questions
+      security:
+        - adminBearerAuth: []
+      responses:
+        "204":
+          description: Pack deleted or already absent
+        "401":
           $ref: "#/components/responses/Problem"
   /v1/rooms:
     post:
@@ -169,6 +204,14 @@ components:
       required: true
       schema:
         type: string
+    PackId:
+      name: packId
+      in: path
+      required: true
+      schema:
+        type: string
+        maxLength: 60
+        pattern: "^[a-z0-9]+(?:[_-][a-z0-9]+)*$"
   schemas:
     CreateRoomRequest:
       type: object
@@ -198,7 +241,7 @@ components:
           $ref: "#/components/schemas/Settings"
         question_pack:
           type: string
-          description: Identifier of a built-in backend-owned question pack
+          description: Identifier of a configured backend-owned question pack
         questions:
           type: array
           writeOnly: true
@@ -245,6 +288,27 @@ components:
           type: string
           minLength: 1
           maxLength: 500
+    QuestionPackInput:
+      type: object
+      additionalProperties: false
+      required: [name, questions]
+      properties:
+        id:
+          type: string
+          description: Ignored in favor of the path identifier
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 300
+        questions:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/QuestionInput"
     QuestionPackMetadata:
       type: object
       additionalProperties: false

@@ -20,6 +20,9 @@ func TestCORSAllowsConfiguredOrigin(t *testing.T) {
 	if got := recorder.Header().Get("Access-Control-Allow-Origin"); got != "http://localhost:5173" {
 		t.Fatalf("Access-Control-Allow-Origin = %q", got)
 	}
+	if got := recorder.Header().Get("Access-Control-Allow-Methods"); got != "GET, POST, PUT, DELETE, OPTIONS" {
+		t.Fatalf("Access-Control-Allow-Methods = %q", got)
+	}
 }
 
 func TestCORSDoesNotReflectUnknownOrigin(t *testing.T) {

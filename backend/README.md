@@ -13,8 +13,11 @@ identifiers, middleware, snapshot contracts, and PostgreSQL storage remain
 under `internal/` so another game can be added as a sibling module without
 depending on Sodapop types.
 
-Built-in question packs live in `internal/games/oddoneout/questionpacks`. Both services expose
-pack metadata at `GET /v1/question-packs`, while the question text remains on
+Default question packs live in `internal/games/oddoneout/questionpacks` and are seeded into
+PostgreSQL on first startup. Administrators can create, edit, search, and delete packs from
+the `/admin` game page; changes are propagated to every configured game-server instance.
+Without `DATABASE_URL`, changes remain available in memory until the game server restarts.
+Both services expose pack metadata at `GET /v1/question-packs`, while question text remains on
 the backend. Room creation accepts either a backend `question_pack` identifier
 or custom `questions` as write-only input. Question pairs are never returned in
 catalog or room-state responses.
@@ -23,7 +26,7 @@ Public room search and coordinator assignments expose only whether a room is
 protected. Password values remain write-only and are never returned by backend
 discovery APIs.
 
-The read-only admin dashboard is served by the frontend at `/admin`. The
+The admin dashboard is served by the frontend at `/admin`. The
 coordinator authenticates the request and concurrently aggregates self-described
 statistics from every configured game server. Each instance advertises a list of
 the games it hosts, so one server process can serve multiple game types while the
@@ -68,7 +71,7 @@ ADMIN_PASSWORD='use-the-same-long-random-url-safe-value' \
 | `PORT` | `8081` | HTTP listen port |
 | `DATABASE_URL` | empty | PostgreSQL connection string; persistence is disabled when empty |
 | `ALLOWED_ORIGINS` | same-origin only | Comma-separated frontend origins or host patterns, such as `http://localhost:5173` |
-| `ADMIN_PASSWORD` | empty | Shared long password for protected operational statistics; the endpoint fails closed when empty |
+| `ADMIN_PASSWORD` | empty | Shared long password for protected statistics and question-pack configuration; admin endpoints fail closed when empty |
 
 ### Coordinator
 

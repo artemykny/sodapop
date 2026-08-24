@@ -35,6 +35,21 @@ export function getAdminOverview(password) {
   });
 }
 
+export function saveAdminQuestionPack(password, pack) {
+  return request(`${coordinatorUrl}/v1/admin/question-packs/${encodeURIComponent(pack.id)}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${password}` },
+    body: JSON.stringify(pack),
+  });
+}
+
+export function deleteAdminQuestionPack(password, packId) {
+  return request(`${coordinatorUrl}/v1/admin/question-packs/${encodeURIComponent(packId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${password}` },
+  });
+}
+
 export async function searchRooms(query) {
   const result = await request(`${coordinatorUrl}/v1/rooms/search?q=${encodeURIComponent(query)}`);
   return result.rooms || [];

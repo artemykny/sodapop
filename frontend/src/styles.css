@@ -72,7 +72,31 @@
   .orbit-two { background: var(--coral); color: white; right: 22%; bottom: 18%; width: 2.6rem; height: 2.6rem; font-size: 1.4rem; transform: rotate(-12deg); }
 
   .home-panel { min-height: 100vh; padding: 2.25rem clamp(2rem, 6vw, 6.5rem); display: flex; flex-direction: column; justify-content: center; background: rgba(245, 240, 228, 0.92); }
-  .panel-topline { position: absolute; top: 2.25rem; left: calc(46% + 2rem); right: clamp(2rem, 6vw, 6.5rem); display: flex; justify-content: space-between; align-items: center; }
+  .panel-topline { position: absolute; z-index: 10; top: 2.25rem; left: calc(46% + 2rem); right: clamp(2rem, 6vw, 6.5rem); display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+  .game-menu { position: relative; pointer-events: auto; }
+  .game-menu-trigger { display: inline-flex; align-items: center; gap: 0.28rem; padding: 0; border: 0; border-radius: 0.25rem; color: var(--ink); background: transparent; text-align: left; transition: color 150ms, opacity 150ms; }
+  .game-menu-trigger:hover, .game-menu.open .game-menu-trigger { color: var(--forest); }
+  .game-menu-current { min-width: 0; }
+  .game-menu-current strong { display: block; overflow: hidden; font-family: var(--font-display); font-size: 1.05rem; font-weight: 900; letter-spacing: -0.06em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+  .game-menu-dot { margin-left: 0.02rem; color: var(--coral); font-size: 0.58rem; line-height: 1; }
+  .game-menu-chevron { width: 0.38rem; height: 0.38rem; margin: 0 0.12rem 0.24rem 0.25rem; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform 150ms; }
+  .game-menu.open .game-menu-chevron { margin-top: 0.35rem; transform: rotate(225deg); }
+  .game-menu-popover { position: absolute; top: calc(100% + 0.65rem); left: 0; width: min(21rem, calc(100vw - 2.4rem)); padding: 0.65rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--paper-strong); box-shadow: 0 22px 60px rgba(25,49,41,0.2); animation: game-menu-in 140ms ease-out; }
+  .game-menu-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.35rem 0.4rem 0.75rem; }
+  .game-menu-heading strong { text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.58rem; }
+  .game-menu-heading span { color: var(--muted); font-size: 0.58rem; font-weight: 700; }
+  .game-menu-options { display: grid; gap: 0.35rem; }
+  .game-menu-option { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.75rem; align-items: center; padding: 0.75rem; border: 0; border-radius: 0.75rem; color: var(--ink); background: transparent; text-align: left; transition: color 150ms, background 150ms, transform 150ms; }
+  .game-menu-option:hover { background: var(--paper); transform: translateX(2px); }
+  .game-menu-option.selected { color: white; background: var(--forest); }
+  .game-menu-icon { width: 2.35rem; height: 2.35rem; display: grid; place-items: center; border-radius: 0.65rem; color: var(--forest); background: var(--lime); font-family: var(--font-display); font-size: 1.1rem; font-weight: 900; transform: rotate(-3deg); }
+  .game-menu-copy { min-width: 0; }
+  .game-menu-copy strong, .game-menu-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .game-menu-copy strong { margin-bottom: 0.18rem; font-size: 0.76rem; }
+  .game-menu-copy small { color: var(--muted); font-size: 0.56rem; }
+  .game-menu-option.selected .game-menu-copy small { color: rgba(255,255,255,0.62); }
+  .game-menu-check { width: 1.35rem; height: 1.35rem; display: grid; place-items: center; border-radius: 50%; color: var(--forest); background: var(--lime); font-size: 0.62rem; font-weight: 900; }
+  @keyframes game-menu-in { from { opacity: 0; transform: translateY(-0.35rem) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
   .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); margin-bottom: 2rem; }
   .mode-tabs button { border: 0; background: transparent; padding: 1rem 0; color: var(--muted); font-weight: 700; position: relative; }
   .mode-tabs button.active { color: var(--ink); }
@@ -92,6 +116,10 @@
   .pack-search { display: block; margin-bottom: 0.55rem; }
   .pack-search input { width: 100%; border: 1px solid var(--line); border-radius: 0.65rem; color: var(--ink); background: var(--paper-strong); padding: 0.65rem 0.8rem; font-size: 0.72rem; }
   .pack-search-empty { margin: 0; padding: 1.5rem 0.8rem; color: var(--muted); text-align: center; font-size: 0.7rem; }
+  .pack-catalog-empty { min-height: 7.5rem; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.9rem; align-items: center; padding: 1rem 1.1rem; border: 1px dashed var(--line); border-radius: 0.8rem; background: rgba(245,240,228,0.58); }
+  .pack-catalog-empty > span { width: 2.6rem; height: 2.6rem; display: grid; place-items: center; border-radius: 0.72rem; color: var(--forest); background: var(--lime); font-family: var(--font-display); font-size: 1.2rem; font-weight: 900; transform: rotate(-4deg); }
+  .pack-catalog-empty strong { display: block; margin-bottom: 0.3rem; color: var(--ink); font-size: 0.76rem; }
+  .pack-catalog-empty p { max-width: 24rem; margin: 0; color: var(--muted); font-size: 0.64rem; font-weight: 600; line-height: 1.45; }
   .question-pack-options { max-height: min(27rem, 52vh); display: grid; gap: 0.45rem; padding: 0.15rem; overflow-y: auto; overscroll-behavior: contain; }
   .pack-browser-option { position: relative; display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 0.65rem; align-items: center; min-height: 4rem; width: 100%; padding: 0.65rem 0.8rem; border: 1px solid var(--line); border-radius: 0.72rem; color: var(--ink); background: rgba(255,253,247,0.54); cursor: pointer; text-align: left; transition: color 150ms, border-color 150ms, background 150ms, transform 150ms; }
   .pack-browser-option:hover { background: var(--paper-strong); transform: translateX(2px); }
@@ -494,6 +522,10 @@
 }
 
 @layer responsive {
+  @media (max-height: 780px) and (min-width: 761px) {
+    .home-panel { justify-content: flex-start; padding-top: 5.5rem; }
+  }
+
   @media (max-width: 1000px) {
     .home { grid-template-columns: 0.7fr 1.3fr; }
     .home-story { padding: 2rem; }

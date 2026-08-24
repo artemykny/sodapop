@@ -4,6 +4,15 @@ import { createRoom, ensureTestPack, joinRoom, suspect, testPack, uniqueRoom } f
 
 test("shares and remembers the player name across room forms", async ({ page }) => {
   await page.goto("/");
+  await expect(page.locator(".wordmark")).toHaveCount(1);
+  const gameSelector = page.getByRole("button", { name: "Choose game. Odd One Out selected." });
+  await expect(gameSelector).toHaveAttribute("aria-expanded", "false");
+  await gameSelector.click();
+  const gameList = page.getByRole("listbox", { name: "Games" });
+  await expect(gameList).toBeVisible();
+  await expect(gameList.getByRole("option", { name: /Odd One Out/ })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Escape");
+  await expect(gameList).toBeHidden();
   await page.getByLabel("Your name").fill("Casey");
 
   await page.getByRole("tab", { name: "Join a room" }).click();
@@ -13,6 +22,19 @@ test("shares and remembers the player name across room forms", async ({ page }) 
 
   await page.reload();
   await expect(page.getByLabel("Your name")).toHaveValue("Jordan");
+});
+
+test("shows a useful placeholder when no question packs exist", async ({ page }) => {
+  await page.route("**/v1/question-packs", (route) => route.fulfill({ json: { packs: [] } }));
+  await page.goto("/");
+  await page.getByLabel("Your name").fill("No Packs Host");
+  await page.getByRole("button", { name: "Continue to questions" }).click();
+
+  await expect(page.getByText("No saved packs", { exact: true })).toBeVisible();
+  await expect(page.getByText("No question packs yet", { exact: true })).toBeVisible();
+  await expect(page.getByText("Upload a JSON file below, or add reusable packs in the admin panel.", { exact: true })).toBeVisible();
+  await expect(page.getByText(/No packs match/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
 });
 
 test("loads backend-owned pack metadata and creates a room", async ({ page, request }) => {

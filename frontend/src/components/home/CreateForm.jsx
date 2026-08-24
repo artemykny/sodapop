@@ -102,17 +102,26 @@ export function CreateForm({ busy, submit, packs, catalogError, playerName, onPl
             <legend className="visually-hidden">Question pack</legend>
             <div className="pack-options-heading">
               <div><span className="card-label">Question packs</span><strong>Choose one for this room</strong></div>
-              <small>{visiblePacks.length} of {packs.length} packs</small>
+              <small>{packs.length ? `${visiblePacks.length} of ${packs.length} packs` : "No saved packs"}</small>
             </div>
             {packs.length > 6 && <label className="pack-search"><span className="visually-hidden">Search question packs</span><input type="search" value={packQuery} onChange={(event) => setPackQuery(event.target.value)} placeholder="Search question packs…" /></label>}
             <div className="question-pack-options" role="group" aria-label="Available question packs">
+              {!packs.length && !catalogError && (
+                <div className="pack-catalog-empty" role="status">
+                  <span aria-hidden="true">?</span>
+                  <div>
+                    <strong>No question packs yet</strong>
+                    <p>Upload a JSON file below, or add reusable packs in the admin panel.</p>
+                  </div>
+                </div>
+              )}
               {visiblePacks.map((pack) => (
                 <label key={pack.id} className={`pack-browser-option ${!customQuestions && values.pack === pack.id ? "selected" : ""}`}>
                   <input type="radio" name="question-pack" checked={!customQuestions && values.pack === pack.id} onChange={() => selectPack(pack)} />
                   <i>{String(packs.findIndex((item) => item.id === pack.id) + 1).padStart(2, "0")}</i><span><strong>{pack.name}</strong><small>{pack.description} · {pack.question_count} questions</small></span>
                 </label>
               ))}
-              {!visiblePacks.length && <p className="pack-search-empty">No packs match “{packQuery.trim()}”.</p>}
+              {packs.length > 0 && !visiblePacks.length && <p className="pack-search-empty">No packs match “{packQuery.trim()}”.</p>}
               <button type="button" className={`pack-browser-option upload-pack-option ${customQuestions ? "selected" : ""}`} onClick={() => fileRef.current?.click()} aria-label={customQuestions ? "Custom questions: choose another file" : "Upload"} aria-pressed={Boolean(customQuestions)}>
                 <i>{customQuestions ? "★" : "+"}</i>
                 <span><strong>{customQuestions ? "Custom questions" : "Upload"}</strong><small>{customQuestions ? `${customQuestions.length} pairs · Choose another file` : "Use your own JSON question set"}</small></span>

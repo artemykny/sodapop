@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { getQuestionPacks } from "../../api/client.js";
 import { CreateForm } from "./CreateForm.jsx";
+import { GameSelector } from "./GameSelector.jsx";
 import { JoinForm } from "./JoinForm.jsx";
 
 const PLAYER_NAME_KEY = "sodapop-player-name-v1";
+
+const GAMES = [
+  {
+    id: "oddoneout",
+    name: "Odd One Out",
+    category: "Social deduction",
+    players: "3–20 players",
+    mark: "?",
+  },
+];
 
 function loadPlayerName() {
   try {
@@ -15,12 +26,14 @@ function loadPlayerName() {
 
 export function Home({ onSession }) {
   const invite = useMemo(() => new URLSearchParams(window.location.search), []);
+  const [selectedGameId, setSelectedGameId] = useState(GAMES[0].id);
   const [mode, setMode] = useState(invite.has("room") ? "join" : "create");
   const [playerName, setPlayerName] = useState(loadPlayerName);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [packs, setPacks] = useState([]);
   const [catalogError, setCatalogError] = useState("");
+  const selectedGame = GAMES.find((game) => game.id === selectedGameId) || GAMES[0];
 
   useEffect(() => {
     let disposed = false;
@@ -75,8 +88,8 @@ export function Home({ onSession }) {
 
       <section className="home-panel">
         <div className="panel-topline">
-          <div className="wordmark wordmark-dark">SODAPOP<span>●</span></div>
-          <span className="tiny-label">3–20 players</span>
+          <GameSelector games={GAMES} value={selectedGame.id} onChange={setSelectedGameId} />
+          <span className="tiny-label">{selectedGame.players}</span>
         </div>
         <div className="mode-tabs" role="tablist" aria-label="Room action">
           <button className={mode === "create" ? "active" : ""} onClick={() => setMode("create")} role="tab" aria-selected={mode === "create"}>Create a room</button>

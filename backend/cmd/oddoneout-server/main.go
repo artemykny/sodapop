@@ -18,7 +18,7 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	var snapshotStore snapshot.Store
-	var packStore questionpacks.Store = questionpacks.NewMemoryStore(questionpacks.Builtins())
+	var packStore questionpacks.Store = questionpacks.NewMemoryStore(nil)
 	var postgres *storage.Postgres
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -31,11 +31,6 @@ func main() {
 		}
 		defer postgres.Close()
 		snapshotStore = postgres
-		if err := postgres.SeedQuestionPacks(ctx, questionpacks.Builtins()); err != nil {
-			cancel()
-			logger.Error("seed question packs", "error", err)
-			os.Exit(1)
-		}
 		cancel()
 		packStore = postgres
 	} else {

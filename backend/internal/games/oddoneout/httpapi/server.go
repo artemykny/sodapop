@@ -37,7 +37,7 @@ type Server struct {
 }
 
 func New(manager *game.Manager, logger *slog.Logger, originPatterns []string, adminPassword string) *Server {
-	return NewWithQuestionPacks(manager, questionpacks.NewMemoryStore(questionpacks.Builtins()), logger, originPatterns, adminPassword)
+	return NewWithQuestionPacks(manager, questionpacks.NewMemoryStore(nil), logger, originPatterns, adminPassword)
 }
 
 func NewWithQuestionPacks(manager *game.Manager, packs questionpacks.Store, logger *slog.Logger, originPatterns []string, adminPassword string) *Server {
@@ -45,7 +45,7 @@ func NewWithQuestionPacks(manager *game.Manager, packs questionpacks.Store, logg
 		logger = slog.Default()
 	}
 	if packs == nil {
-		packs = questionpacks.NewMemoryStore(questionpacks.Builtins())
+		packs = questionpacks.NewMemoryStore(nil)
 	}
 	return &Server{
 		manager: manager, packStore: packs, logger: logger, allowedOrigins: slices.Clone(originPatterns),

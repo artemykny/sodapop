@@ -8,22 +8,11 @@ import (
 	"github.com/ak/sodapop/backend/internal/games/oddoneout"
 )
 
-func TestGetReturnsQuestionCopy(t *testing.T) {
-	pack, ok := Get("classic")
-	if !ok || len(pack.Questions) == 0 {
-		t.Fatal("classic pack was not found")
-	}
-	original := pack.Questions[0].Real
-	pack.Questions[0].Real = "changed"
-
-	again, ok := Get("classic")
-	if !ok || again.Questions[0].Real != original {
-		t.Fatal("Get returned mutable catalog storage")
-	}
-}
-
 func TestMemoryStoreCanConfigurePacks(t *testing.T) {
-	store := NewMemoryStore(Builtins())
+	store := NewMemoryStore(nil)
+	if packs, err := store.ListQuestionPacks(context.Background()); err != nil || len(packs) != 0 {
+		t.Fatalf("new store packs = %+v, %v; want empty catalog", packs, err)
+	}
 	pack := Pack{
 		ID: "team-retreat", Name: "Team retreat", Description: "For coworkers",
 		Questions: []oddoneout.Question{{Real: "Best office snack?", Fake: "Worst office snack?"}},

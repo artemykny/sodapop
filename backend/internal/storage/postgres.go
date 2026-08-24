@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ak/sodapop/backend/internal/games/oddoneout/questionpacks"
 	"github.com/ak/sodapop/backend/internal/snapshot"
@@ -49,17 +50,20 @@ func (p *Postgres) Migrate(ctx context.Context) error {
 }
 
 func (p *Postgres) Save(ctx context.Context, value snapshot.Snapshot) error {
+	if strings.TrimSpace(value.GameID) == "" {
+		return errors.New("save room snapshot: game id is required")
+	}
 	_, err := p.pool.Exec(ctx, `
-		INSERT INTO room_snapshots (room_id, room_name, phase, version, state, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (room_id) DO UPDATE SET
+		INSERT INTO room_snapshots (game_id, room_id, room_name, phase, version, state, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (game_id, room_id) DO UPDATE SET
 			room_name = EXCLUDED.room_name,
 			phase = EXCLUDED.phase,
 			version = EXCLUDED.version,
 			state = EXCLUDED.state,
 			updated_at = EXCLUDED.updated_at
 		WHERE room_snapshots.version < EXCLUDED.version`,
-		value.RoomID, value.RoomName, value.Phase, value.Version,
+		value.GameID, value.RoomID, value.RoomName, value.Phase, value.Version,
 		[]byte(value.State), value.UpdatedAt,
 	)
 	if err != nil {
@@ -68,14 +72,14 @@ func (p *Postgres) Save(ctx context.Context, value snapshot.Snapshot) error {
 	return nil
 }
 
-func (p *Postgres) Load(ctx context.Context, roomID string) (snapshot.Snapshot, error) {
+func (p *Postgres) Load(ctx context.Context, gameID, roomID string) (snapshot.Snapshot, error) {
 	var value snapshot.Snapshot
 	err := p.pool.QueryRow(ctx, `
-		SELECT room_id, room_name, phase, version, state, updated_at
+		SELECT game_id, room_id, room_name, phase, version, state, updated_at
 		FROM room_snapshots
-		WHERE room_id = $1`, roomID,
+		WHERE game_id = $1 AND room_id = $2`, gameID, roomID,
 	).Scan(
-		&value.RoomID, &value.RoomName, &value.Phase, &value.Version,
+		&value.GameID, &value.RoomID, &value.RoomName, &value.Phase, &value.Version,
 		&value.State, &value.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -91,34 +95,10 @@ func (p *Postgres) Close() {
 	p.pool.Close()
 }
 
-func (p *Postgres) SeedQuestionPacks(ctx context.Context, packs []questionpacks.Pack) error {
-	transaction, err := p.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin question pack seed: %w", err)
-	}
-	defer transaction.Rollback(ctx)
-	for _, pack := range packs {
-		questions, err := json.Marshal(pack.Questions)
-		if err != nil {
-			return fmt.Errorf("encode question pack %q: %w", pack.ID, err)
-		}
-		if _, err := transaction.Exec(ctx, `
-			INSERT INTO question_packs (id, name, description, questions)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (id) DO NOTHING`, pack.ID, pack.Name, pack.Description, questions); err != nil {
-			return fmt.Errorf("seed question pack %q: %w", pack.ID, err)
-		}
-	}
-	if err := transaction.Commit(ctx); err != nil {
-		return fmt.Errorf("commit question pack seed: %w", err)
-	}
-	return nil
-}
-
 func (p *Postgres) ListQuestionPacks(ctx context.Context) ([]questionpacks.Pack, error) {
 	rows, err := p.pool.Query(ctx, `
 		SELECT id, name, description, questions
-		FROM question_packs
+		FROM oddoneout_question_packs
 		ORDER BY lower(name), id`)
 	if err != nil {
 		return nil, fmt.Errorf("list question packs: %w", err)
@@ -147,7 +127,7 @@ func (p *Postgres) GetQuestionPack(ctx context.Context, id string) (questionpack
 	var questions []byte
 	err := p.pool.QueryRow(ctx, `
 		SELECT id, name, description, questions
-		FROM question_packs
+		FROM oddoneout_question_packs
 		WHERE id = $1`, id,
 	).Scan(&pack.ID, &pack.Name, &pack.Description, &questions)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -172,7 +152,7 @@ func (p *Postgres) SaveQuestionPack(ctx context.Context, pack questionpacks.Pack
 		return fmt.Errorf("encode question pack: %w", err)
 	}
 	_, err = p.pool.Exec(ctx, `
-		INSERT INTO question_packs (id, name, description, questions)
+		INSERT INTO oddoneout_question_packs (id, name, description, questions)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
@@ -186,7 +166,7 @@ func (p *Postgres) SaveQuestionPack(ctx context.Context, pack questionpacks.Pack
 }
 
 func (p *Postgres) DeleteQuestionPack(ctx context.Context, id string) error {
-	result, err := p.pool.Exec(ctx, `DELETE FROM question_packs WHERE id = $1`, id)
+	result, err := p.pool.Exec(ctx, `DELETE FROM oddoneout_question_packs WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("delete question pack: %w", err)
 	}

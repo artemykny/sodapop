@@ -93,7 +93,7 @@ func TestAdminOverviewAggregatesMultipleGamesAndUnavailableServers(t *testing.T)
 				Rooms:   adminapi.Rooms{Total: 3, Active: 2, Finished: 1, ByPhase: map[string]int{"lobby": 2, "finished": 1}},
 				Players: adminapi.Players{Total: 8, Connected: 5},
 				QuestionPacks: []adminapi.QuestionPack{{
-					ID: "classic", Name: "Classic mix", QuestionCount: 1,
+					ID: "test-pack", Name: "Test pack", QuestionCount: 1,
 					Items: []adminapi.PackItem{{Fields: []adminapi.ContentField{{Label: "Question", Value: "A question"}}}},
 				}},
 			},
@@ -215,7 +215,7 @@ func TestQuestionPacks(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"packs":[{"id":"classic","name":"Classic mix","description":"Classic","question_count":10}]}`))
+		_, _ = w.Write([]byte(`{"packs":[{"id":"test-pack","name":"Test pack","description":"Test fixture","question_count":10}]}`))
 	}))
 	t.Cleanup(gameServer.Close)
 
@@ -280,5 +280,35 @@ func TestAdminQuestionPackMutationPropagatesToInstances(t *testing.T) {
 		if !strings.Contains(got, "/v1/admin/question-packs/team-retreat") || !strings.Contains(got, body) {
 			t.Errorf("propagated request = %q", got)
 		}
+	}
+}
+
+func TestAdminOverviewReturnsEmptyQuestionPackArray(t *testing.T) {
+	password := "admin-secret"
+	stats := adminapi.GameServerStats{Games: []adminapi.GameStats{{
+		Game:  adminapi.Game{ID: "oddoneout", Name: "Odd One Out"},
+		Rooms: adminapi.Rooms{ByPhase: map[string]int{}}, Players: adminapi.Players{},
+		QuestionPacks: []adminapi.QuestionPack{},
+	}}}
+	payload, err := json.Marshal(stats)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(bytes.NewReader(payload))}, nil
+	})}
+	coordinator, err := New([]string{"http://game.test"}, client, nil, nil, password)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/v1/admin/overview", nil)
+	request.Header.Set("Authorization", "Bearer "+password)
+	recorder := httptest.NewRecorder()
+	coordinator.Handler().ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"question_packs":[]`)) {
+		t.Fatalf("empty catalog was not encoded as an array: %s", recorder.Body.String())
 	}
 }

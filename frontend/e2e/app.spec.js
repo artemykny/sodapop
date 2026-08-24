@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { adminPassword } from "./constants.js";
-import { createRoom, joinRoom, suspect, uniqueRoom } from "./helpers.js";
+import { createRoom, ensureTestPack, joinRoom, suspect, testPack, uniqueRoom } from "./helpers.js";
 
 test("shares and remembers the player name across room forms", async ({ page }) => {
   await page.goto("/");
@@ -16,6 +16,7 @@ test("shares and remembers the player name across room forms", async ({ page }) 
 });
 
 test("loads backend-owned pack metadata and creates a room", async ({ page, request }) => {
+  await ensureTestPack(request);
   await page.goto("/");
   const bodyFont = await page.locator("body").evaluate((element) => getComputedStyle(element).fontFamily);
   expect(bodyFont).toContain("Nunito Sans Variable");
@@ -24,8 +25,7 @@ test("loads backend-owned pack metadata and creates a room", async ({ page, requ
   expect(catalogResponse.ok()).toBeTruthy();
   const catalog = await catalogResponse.json();
   expect(catalog.packs).toEqual(expect.arrayContaining([
-    expect.objectContaining({ id: "classic", name: "Classic mix", question_count: 10 }),
-    expect.objectContaining({ id: "after_dark", name: "After hours", question_count: 10 }),
+    expect.objectContaining({ id: testPack.id, name: testPack.name, question_count: testPack.questions.length }),
   ]));
   for (const pack of catalog.packs) expect(pack).not.toHaveProperty("questions");
 
@@ -43,6 +43,7 @@ test("loads backend-owned pack metadata and creates a room", async ({ page, requ
 });
 
 test("admin dashboard authenticates and configures question packs", async ({ page, request }) => {
+  await ensureTestPack(request);
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "Admin console" })).toBeVisible();
 
@@ -55,28 +56,27 @@ test("admin dashboard authenticates and configures question packs", async ({ pag
   await expect(page.getByRole("heading", { name: "General overview" })).toBeVisible();
   await page.getByRole("button", { name: /Odd One Out/ }).click();
   await expect(page.getByRole("heading", { name: "Odd One Out" })).toBeVisible();
-  await expect(page.getByText("Classic mix", { exact: true })).toBeVisible();
-  await expect(page.getByText("After hours", { exact: true })).toBeVisible();
+  await expect(page.getByText(testPack.name, { exact: true })).toBeVisible();
   await expect(page.getByText("What is the best pizza topping?", { exact: true })).toBeHidden();
-  await page.locator(".admin-pack-row").filter({ hasText: "Classic mix" }).click();
-  const details = page.getByRole("dialog", { name: "Classic mix" });
+  await page.locator(".admin-pack-row").filter({ hasText: testPack.name }).click();
+  const details = page.getByRole("dialog", { name: testPack.name });
   await expect(details).toContainText("What is the best pizza topping?");
   await expect(details).toContainText("What is the worst pizza topping?");
   await details.getByRole("button", { name: "Edit JSON" }).click();
   const editor = page.getByRole("dialog", { name: "Edit JSON" });
   const jsonField = editor.getByLabel("Question pack JSON");
-  await expect(jsonField).toHaveValue(/"id": "classic"/);
+  await expect(jsonField).toHaveValue(/"id": "e2e-pack"/);
   await expect(jsonField).toHaveValue(/"real": "What is the best pizza topping\?"/);
 
   const downloadPromise = page.waitForEvent("download");
   await editor.getByRole("button", { name: /Export JSON/ }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("classic.json");
+  expect(download.suggestedFilename()).toBe("e2e-pack.json");
   let exportedContent = "";
   for await (const chunk of await download.createReadStream()) exportedContent += chunk.toString();
   expect(JSON.parse(exportedContent)).toEqual(expect.objectContaining({
-    id: "classic",
-    name: "Classic mix",
+    id: testPack.id,
+    name: testPack.name,
     questions: expect.arrayContaining([expect.objectContaining({ real: "What is the best pizza topping?", fake: "What is the worst pizza topping?" })]),
   }));
 
@@ -141,7 +141,6 @@ test("accepts custom questions as write-only room input", async ({ page }) => {
   await page.getByLabel("Room name").fill(roomName);
   await page.getByLabel("Your name").fill("Uploader");
   await page.getByRole("button", { name: "Continue to questions" }).click();
-  await expect(page.getByRole("radio", { name: "Classic mix" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({
     name: "custom-questions.json",

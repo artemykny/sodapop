@@ -13,10 +13,10 @@ identifiers, middleware, snapshot contracts, and PostgreSQL storage remain
 under `internal/` so another game can be added as a sibling module without
 depending on Sodapop types.
 
-Default question packs live in `internal/games/oddoneout/questionpacks` and are seeded into
-PostgreSQL on first startup. Administrators can create, edit, search, and delete packs from
-the `/admin` game page; changes are propagated to every configured game-server instance.
-Without `DATABASE_URL`, changes remain available in memory until the game server restarts.
+Question packs are created and managed by administrators from the `/admin` game page; changes
+are propagated to every configured game-server instance. A new installation starts with an
+empty catalog. With PostgreSQL, configured packs persist across restarts. Without
+`DATABASE_URL`, changes remain available in memory until the game server restarts.
 Both services expose pack metadata at `GET /v1/question-packs`, while question text remains on
 the backend. Room creation accepts either a backend `question_pack` identifier
 or custom `questions` as write-only input. Question pairs are never returned in
@@ -81,6 +81,18 @@ ADMIN_PASSWORD='use-the-same-long-random-url-safe-value' \
 | `GAME_SERVERS` | required | Comma-separated public game-server base URLs |
 | `ALLOWED_ORIGINS` | same-origin only | Comma-separated frontend origins or host patterns |
 | `ADMIN_PASSWORD` | empty | Long password protecting `/v1/admin/overview`; must match every game server |
+
+## PostgreSQL schema
+
+- `room_snapshots` is shared by game types. Rows are isolated by `game_id`, and
+  the primary key is `(game_id, room_id)` so different games can safely use the
+  same room identifier.
+- `oddoneout_question_packs` is owned only by Odd One Out and is deliberately
+  game-prefixed. Future game-specific tables should follow the same convention.
+
+Startup migration upgrades the original schema in place: existing snapshot rows
+are assigned to `oddoneout`, and `question_packs` is renamed to
+`oddoneout_question_packs` without replacing its data.
 
 ## Tests
 

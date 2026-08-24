@@ -11,7 +11,7 @@
 @layer base {
   :root {
     --font-body: "Nunito Sans Variable", "Segoe UI", sans-serif;
-    --font-display: "Fredoka Variable", "Nunito Sans Variable", sans-serif;
+    --font-display: "Arial Rounded MT Bold", "Arial Rounded MT", "Fredoka Variable", "Nunito Sans Variable", sans-serif;
     --ink: #17251f;
     --forest: #173f33;
     --forest-deep: #102f27;
@@ -61,7 +61,7 @@
   .home-story { min-height: 100vh; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 2.3rem 3.2rem; color: var(--paper-strong); background: var(--forest); isolation: isolate; }
   .home-story::before { content: ""; position: absolute; width: 29rem; height: 29rem; border: 1px solid rgba(255,255,255,0.13); border-radius: 50%; left: -11rem; bottom: -8rem; box-shadow: 0 0 0 5rem rgba(255,255,255,0.025), 0 0 0 10rem rgba(255,255,255,0.018); z-index: -1; }
   .story-copy { max-width: 42rem; margin: auto 0; padding: 5rem 0 4rem; }
-  .story-copy h1 { font-size: clamp(3.8rem, 6.8vw, 7.7rem); line-height: 0.86; margin-bottom: 2rem; letter-spacing: -0.075em; }
+  .story-copy h1 { font-size: clamp(3.8rem, 6.8vw, 7.7rem); line-height: 0.94; margin-bottom: 2rem; font-weight: 700; letter-spacing: -0.02em; }
   .story-lede { max-width: 34rem; color: rgba(255,255,255,0.74); font-size: 1.05rem; line-height: 1.65; }
   .how-it-works { display: flex; gap: 1.1rem; }
   .how-it-works div { border-top: 1px solid rgba(255,255,255,0.28); padding-top: 0.8rem; flex: 1; display: flex; align-items: center; gap: 0.65rem; }

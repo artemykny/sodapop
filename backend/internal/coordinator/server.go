@@ -233,6 +233,7 @@ func (s *Server) adminOverview(w http.ResponseWriter, r *http.Request) {
 				aggregate = &gameAggregate{
 					overview: adminapi.GameOverview{
 						Game: stats.Game, Rooms: adminapi.Rooms{ByPhase: make(map[string]int)},
+						QuestionPacks: make([]adminapi.QuestionPack, 0),
 					},
 					packs: make(map[string]adminapi.QuestionPack),
 				}

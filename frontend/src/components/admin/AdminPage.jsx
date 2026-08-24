@@ -254,8 +254,9 @@ function QuestionPackManager({ game, onSave, onDelete }) {
   const [viewing, setViewing] = useState(null);
   const [editing, setEditing] = useState(null);
   const [actionError, setActionError] = useState("");
+  const packs = game.question_packs || [];
   const normalizedQuery = query.trim().toLowerCase();
-  const filtered = game.question_packs
+  const filtered = packs
     .filter((pack) => !normalizedQuery || [pack.name, pack.id, pack.description].some((value) => value?.toLowerCase().includes(normalizedQuery)))
     .sort((a, b) => sort === "size" ? b.question_count - a.question_count || a.name.localeCompare(b.name) : a.name.localeCompare(b.name));
   const pages = Math.max(1, Math.ceil(filtered.length / packPageSize));
@@ -285,7 +286,7 @@ function QuestionPackManager({ game, onSave, onDelete }) {
       <div className="admin-pack-toolbar">
         <label className="admin-pack-search"><span className="visually-hidden">Search packs</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name, ID, or description…" /></label>
         <label><span>Sort</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value="name">Name</option><option value="size">Most questions</option></select></label>
-        <span className="admin-pack-total">{filtered.length} of {game.question_packs.length} packs</span>
+        <span className="admin-pack-total">{filtered.length} of {packs.length} packs</span>
       </div>
       {actionError && <p className="form-error" role="alert">{actionError}</p>}
       <div className="admin-pack-table" role="table" aria-label="Question packs">

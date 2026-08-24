@@ -87,7 +87,7 @@ func createRoom(t *testing.T, baseURL string) testSession {
 	body := `{
 			"name":"Friday Game","password":"secret","host_name":"Host",
 			"settings":{"player_limit":6,"answer_seconds":30,"discussion_seconds":30,"voting_seconds":30,"rounds":1},
-			"question_pack":"classic"
+			"questions":[{"real":"Best pizza topping?","fake":"Worst pizza topping?"}]
 		}`
 	response, err := http.Post(baseURL+"/v1/rooms", "application/json", strings.NewReader(body))
 	if err != nil {
@@ -107,7 +107,8 @@ func createRoom(t *testing.T, baseURL string) testSession {
 func TestQuestionPacksAndInvalidSelection(t *testing.T) {
 	manager := game.NewManager(nil, nil)
 	t.Cleanup(manager.Close)
-	server := httptest.NewServer(New(manager, nil, nil, "").Handler())
+	store := questionpacks.NewMemoryStore([]questionpacks.Pack{testQuestionPack()})
+	server := httptest.NewServer(NewWithQuestionPacks(manager, store, nil, nil, "").Handler())
 	t.Cleanup(server.Close)
 
 	response, err := http.Get(server.URL + "/v1/question-packs")
@@ -149,7 +150,7 @@ func TestQuestionPacksAndInvalidSelection(t *testing.T) {
 func TestAdminCanConfigureQuestionPacks(t *testing.T) {
 	manager := game.NewManager(nil, nil)
 	t.Cleanup(manager.Close)
-	store := questionpacks.NewMemoryStore(questionpacks.Builtins())
+	store := questionpacks.NewMemoryStore(nil)
 	handler := NewWithQuestionPacks(manager, store, nil, nil, "admin-secret").Handler()
 	body := `{"name":"Team retreat","description":"For coworkers","questions":[{"real":"Best office snack?","fake":"Worst office snack?"}]}`
 	request := httptest.NewRequest(http.MethodPut, "/v1/admin/question-packs/team-retreat", strings.NewReader(body))
@@ -210,7 +211,7 @@ func TestCreateRoomRejectsTrailingJSONData(t *testing.T) {
 	body := `{
 		"name":"Trailing Data","password":"secret","host_name":"Host",
 		"settings":{"player_limit":6,"answer_seconds":30,"discussion_seconds":30,"voting_seconds":30,"rounds":1},
-		"question_pack":"classic"
+		"question_pack":"missing"
 	} trailing garbage`
 	response, err := http.Post(server.URL+"/v1/rooms", "application/json", strings.NewReader(body))
 	if err != nil {
@@ -229,7 +230,8 @@ func TestAdminStatsRequireLongPassword(t *testing.T) {
 	manager := game.NewManager(nil, nil)
 	t.Cleanup(manager.Close)
 	password := strings.Repeat("admin-secret-", 40)
-	server := httptest.NewServer(New(manager, nil, nil, password).Handler())
+	store := questionpacks.NewMemoryStore([]questionpacks.Pack{testQuestionPack()})
+	server := httptest.NewServer(NewWithQuestionPacks(manager, store, nil, nil, password).Handler())
 	t.Cleanup(server.Close)
 	createRoom(t, server.URL)
 
@@ -270,6 +272,13 @@ func TestAdminStatsRequireLongPassword(t *testing.T) {
 	}
 	if got := gameStats.QuestionPacks[0].Items[0].Fields; len(got) != 2 || got[0].Value == "" || got[1].Value == "" {
 		t.Fatalf("question fields = %+v", got)
+	}
+}
+
+func testQuestionPack() questionpacks.Pack {
+	return questionpacks.Pack{
+		ID: "test-pack", Name: "Test pack", Description: "Test fixture",
+		Questions: []game.Question{{Real: "Best pizza topping?", Fake: "Worst pizza topping?"}},
 	}
 }
 

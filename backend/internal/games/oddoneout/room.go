@@ -465,7 +465,7 @@ func (r *Room) Snapshot() (snapshot.Snapshot, error) {
 		return snapshot.Snapshot{}, fmt.Errorf("marshal room snapshot: %w", err)
 	}
 	return snapshot.Snapshot{
-		RoomID: r.ID, RoomName: r.Name, Phase: string(r.Phase), Version: r.Version,
+		GameID: "oddoneout", RoomID: r.ID, RoomName: r.Name, Phase: string(r.Phase), Version: r.Version,
 		State: state, UpdatedAt: r.now().UTC(),
 	}, nil
 }

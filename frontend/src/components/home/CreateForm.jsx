@@ -1,22 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { createRoom } from "../../api/client.js";
+import { useI18n } from "../../i18n/I18n.jsx";
 import { Field } from "../shared/Field.jsx";
 import { FlowProgress } from "./FlowProgress.jsx";
 
-const steps = ["Basics", "Questions", "Setup", "Review"];
-const stepCopy = [
-  { eyebrow: "Make it yours", title: "Name the gathering", description: "Give everyone a room to recognize and tell us what to call you." },
-  { eyebrow: "Choose the questions", title: "Choose the deck", description: "Browse the collection, pick a mood, or bring a question set of your own." },
-  { eyebrow: "Tune the room", title: "Set the pace and password", description: "Choose the room size, round timing, and the secret your guests will use to join." },
-  { eyebrow: "Everything looks good", title: "Ready to create", description: "Take one last look. Your room will open as soon as you continue." },
-];
-
 export function CreateForm({ busy, submit, packs, catalogError, playerName, onPlayerNameChange }) {
+  const { plural, t } = useI18n();
+  const steps = t("create.steps");
+  const stepCopy = t("create.copy");
   const [step, setStep] = useState(0);
-  const [values, setValues] = useState({
-    roomName: "Friday suspects", password: "", playerLimit: 8,
+  const [values, setValues] = useState(() => ({
+    roomName: t("create.defaultRoomName"), password: "", playerLimit: 8,
     answerSeconds: 60, discussionSeconds: 120, votingSeconds: 45, rounds: 5, pack: "",
-  });
+  }));
   const [customQuestions, setCustomQuestions] = useState(null);
   const [packQuery, setPackQuery] = useState("");
   const fileRef = useRef(null);
@@ -89,94 +85,94 @@ export function CreateForm({ busy, submit, packs, catalogError, playerName, onPl
       <FlowProgress current={step} steps={steps} eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 
       {step === 0 && (
-        <section className="flow-step" aria-label="Room basics">
-          <Field label="Your name"><input value={playerName} onChange={(event) => onPlayerNameChange(event.target.value)} maxLength={30} placeholder="How should we know you?" autoFocus required /></Field>
-          <Field label="Room name"><input value={values.roomName} onChange={update("roomName")} maxLength={60} placeholder="e.g. Friday suspects" required /></Field>
-          <div className="flow-tip"><span>01</span><p>You’ll be the host. You can change game settings from the room later.</p></div>
+        <section className="flow-step" aria-label={t("create.roomBasics")}>
+          <Field label={t("create.yourName")}><input value={playerName} onChange={(event) => onPlayerNameChange(event.target.value)} maxLength={30} placeholder={t("create.yourNamePlaceholder")} autoFocus required /></Field>
+          <Field label={t("create.roomName")}><input value={values.roomName} onChange={update("roomName")} maxLength={60} placeholder={t("create.roomNamePlaceholder")} required /></Field>
+          <div className="flow-tip"><span>01</span><p>{t("create.hostTip")}</p></div>
         </section>
       )}
 
       {step === 1 && (
-        <section className="flow-step question-pack-step" aria-label="Question pack selection">
+        <section className="flow-step question-pack-step" aria-label={t("create.packSelection")}>
           <fieldset className="field field-group">
-            <legend className="visually-hidden">Question pack</legend>
+            <legend className="visually-hidden">{t("create.questionPack")}</legend>
             <div className="pack-options-heading">
-              <div><span className="card-label">Question packs</span><strong>Choose one for this room</strong></div>
-              <small>{packs.length ? `${visiblePacks.length} of ${packs.length} packs` : "No saved packs"}</small>
+              <div><span className="card-label">{t("create.questionPacks")}</span><strong>{t("create.choosePack")}</strong></div>
+              <small>{packs.length ? t("create.packCount", { visible: visiblePacks.length, total: packs.length }) : t("create.noSavedPacks")}</small>
             </div>
-            {packs.length > 6 && <label className="pack-search"><span className="visually-hidden">Search question packs</span><input type="search" value={packQuery} onChange={(event) => setPackQuery(event.target.value)} placeholder="Search question packs…" /></label>}
-            <div className="question-pack-options" role="group" aria-label="Available question packs">
+            {packs.length > 6 && <label className="pack-search"><span className="visually-hidden">{t("create.searchPacks")}</span><input type="search" value={packQuery} onChange={(event) => setPackQuery(event.target.value)} placeholder={t("create.searchPlaceholder")} /></label>}
+            <div className="question-pack-options" role="group" aria-label={t("create.availablePacks")}>
               {!packs.length && !catalogError && (
                 <div className="pack-catalog-empty" role="status">
                   <span aria-hidden="true">?</span>
                   <div>
-                    <strong>No question packs yet</strong>
-                    <p>Upload a JSON file below, or add reusable packs in the admin panel.</p>
+                    <strong>{t("create.noPacksYet")}</strong>
+                    <p>{t("create.noPacksHelp")}</p>
                   </div>
                 </div>
               )}
               {visiblePacks.map((pack) => (
                 <label key={pack.id} className={`pack-browser-option ${!customQuestions && values.pack === pack.id ? "selected" : ""}`}>
                   <input type="radio" name="question-pack" checked={!customQuestions && values.pack === pack.id} onChange={() => selectPack(pack)} />
-                  <i>{String(packs.findIndex((item) => item.id === pack.id) + 1).padStart(2, "0")}</i><span><strong>{pack.name}</strong><small>{pack.description} · {pack.question_count} questions</small></span>
+                  <i>{String(packs.findIndex((item) => item.id === pack.id) + 1).padStart(2, "0")}</i><span><strong>{pack.name}</strong><small>{pack.description} · {plural("create.questions", pack.question_count)}</small></span>
                 </label>
               ))}
-              {packs.length > 0 && !visiblePacks.length && <p className="pack-search-empty">No packs match “{packQuery.trim()}”.</p>}
-              <button type="button" className={`pack-browser-option upload-pack-option ${customQuestions ? "selected" : ""}`} onClick={() => fileRef.current?.click()} aria-label={customQuestions ? "Custom questions: choose another file" : "Upload"} aria-pressed={Boolean(customQuestions)}>
+              {packs.length > 0 && !visiblePacks.length && <p className="pack-search-empty">{t("create.noPackMatch", { query: packQuery.trim() })}</p>}
+              <button type="button" className={`pack-browser-option upload-pack-option ${customQuestions ? "selected" : ""}`} onClick={() => fileRef.current?.click()} aria-label={customQuestions ? `${t("common.customQuestions")}: ${t("create.chooseAnotherFile")}` : t("common.upload")} aria-pressed={Boolean(customQuestions)}>
                 <i>{customQuestions ? "★" : "+"}</i>
-                <span><strong>{customQuestions ? "Custom questions" : "Upload"}</strong><small>{customQuestions ? `${customQuestions.length} pairs · Choose another file` : "Use your own JSON question set"}</small></span>
+                <span><strong>{customQuestions ? t("common.customQuestions") : t("common.upload")}</strong><small>{customQuestions ? `${plural("create.customPairs", customQuestions.length)} · ${t("create.chooseAnotherFile")}` : t("create.uploadHelp")}</small></span>
               </button>
             </div>
             <input ref={fileRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={uploadQuestions} />
           </fieldset>
-          {catalogError && <p className="form-error" role="alert">Built-in packs could not be loaded. You can still upload a custom pack.</p>}
+          {catalogError && <p className="form-error" role="alert">{t("create.catalogError")}</p>}
         </section>
       )}
 
       {step === 2 && (
-        <section className="flow-step" aria-label="Room setup">
+        <section className="flow-step" aria-label={t("create.roomSetup")}>
           <div className="settings-card">
-            <div><span className="card-label">Room settings</span><strong>Fine-tune the pace</strong></div>
+            <div><span className="card-label">{t("create.roomSettings")}</span><strong>{t("create.fineTune")}</strong></div>
             <div className="settings-strip">
-              <Field label="Players"><input type="number" min="3" max="20" value={values.playerLimit} onChange={update("playerLimit")} /></Field>
-              <Field label="Rounds"><input type="number" min="1" max={maxRounds} value={values.rounds} onChange={update("rounds")} /></Field>
-              <Field label="Answer"><select value={values.answerSeconds} onChange={update("answerSeconds")}><option value="30">30 sec</option><option value="60">1 min</option><option value="90">1½ min</option><option value="120">2 min</option></select></Field>
-              <Field label="Discuss"><select value={values.discussionSeconds} onChange={update("discussionSeconds")}><option value="60">1 min</option><option value="120">2 min</option><option value="180">3 min</option><option value="300">5 min</option></select></Field>
+              <Field label={t("create.players")}><input type="number" min="3" max="20" value={values.playerLimit} onChange={update("playerLimit")} /></Field>
+              <Field label={t("create.rounds")}><input type="number" min="1" max={maxRounds} value={values.rounds} onChange={update("rounds")} /></Field>
+              <Field label={t("create.answer")}><select value={values.answerSeconds} onChange={update("answerSeconds")}><option value="30">{t("create.secondsShort", { count: 30 })}</option><option value="60">{t("create.minutesShort", { count: 1 })}</option><option value="90">{t("create.minutesShort", { count: "1½" })}</option><option value="120">{t("create.minutesShort", { count: 2 })}</option></select></Field>
+              <Field label={t("create.discuss")}><select value={values.discussionSeconds} onChange={update("discussionSeconds")}><option value="60">{t("create.minutesShort", { count: 1 })}</option><option value="120">{t("create.minutesShort", { count: 2 })}</option><option value="180">{t("create.minutesShort", { count: 3 })}</option><option value="300">{t("create.minutesShort", { count: 5 })}</option></select></Field>
             </div>
           </div>
           <div className="private-room-card">
             <div className="private-room-heading">
               <span className="access-icon">✦</span>
-              <div><strong>Password protected</strong><small>Every room is private. The invite link carries the password for your guests.</small></div>
+              <div><strong>{t("common.passwordProtected")}</strong><small>{t("create.privateHelp")}</small></div>
             </div>
             <div className="private-password-field">
-              <Field label="Room password"><input type="password" value={values.password} onChange={update("password")} maxLength={100} placeholder="Choose a secret knock" autoFocus required /></Field>
-              <p>Guests using the invite link get access automatically.</p>
+              <Field label={t("create.roomPassword")}><input type="password" value={values.password} onChange={update("password")} maxLength={100} placeholder={t("create.passwordPlaceholder")} autoFocus required /></Field>
+              <p>{t("create.inviteAccessHelp")}</p>
             </div>
           </div>
         </section>
       )}
 
       {step === 3 && (
-        <section className="flow-step ready-step" aria-label="Ready to create">
+        <section className="flow-step ready-step" aria-label={t("create.readyLabel")}>
           <div className="ready-hero">
             <span>✓</span>
-            <div><p className="kicker">Room ready</p><h3>{values.roomName}</h3><p>Hosted by {playerName}</p></div>
+            <div><p className="kicker">{t("create.roomReady")}</p><h3>{values.roomName}</h3><p>{t("create.hostedBy", { name: playerName })}</p></div>
           </div>
           <dl className="ready-details">
-            <div><dt>Questions</dt><dd>{customQuestions ? `${customQuestions.length} custom pairs` : selectedPack?.name}</dd></div>
-            <div><dt>Game</dt><dd>{values.rounds} rounds · {values.playerLimit} players</dd></div>
-            <div><dt>Timing</dt><dd>{values.answerSeconds}s answer · {values.discussionSeconds}s discuss</dd></div>
-            <div><dt>Access</dt><dd>Password protected</dd></div>
+            <div><dt>{t("create.questionsLabel")}</dt><dd>{customQuestions ? plural("create.customPairs", customQuestions.length) : selectedPack?.name}</dd></div>
+            <div><dt>{t("create.gameLabel")}</dt><dd>{t("create.roundsPlayers", { rounds: values.rounds, players: values.playerLimit })}</dd></div>
+            <div><dt>{t("create.timingLabel")}</dt><dd>{t("create.timing", { answer: values.answerSeconds, discussion: values.discussionSeconds })}</dd></div>
+            <div><dt>{t("create.accessLabel")}</dt><dd>{t("common.passwordProtected")}</dd></div>
           </dl>
-          <p className="ready-note">You can adjust room settings later from the host controls.</p>
+          <p className="ready-note">{t("create.settingsLater")}</p>
         </section>
       )}
 
       <div className="flow-actions">
-        {step > 0 && <button type="button" className="text-button" onClick={() => setStep((current) => current - 1)}>← Back</button>}
+        {step > 0 && <button type="button" className="text-button" onClick={() => setStep((current) => current - 1)}>← {t("common.back")}</button>}
         <button className="primary-button" disabled={busy || !canContinue}>
-          {busy ? "Building your room…" : step === 0 ? "Continue to questions" : step === 1 ? "Continue to setup" : step === 2 ? "Review room" : "Create room"}<span aria-hidden="true">→</span>
+          {busy ? t("create.building") : step === 0 ? t("create.continueQuestions") : step === 1 ? t("create.continueSetup") : step === 2 ? t("create.reviewRoom") : t("create.createRoom")}<span aria-hidden="true">→</span>
         </button>
       </div>
     </form>

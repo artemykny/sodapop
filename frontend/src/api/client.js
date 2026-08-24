@@ -11,7 +11,9 @@ async function request(url, options = {}) {
       },
     });
   } catch {
-    throw new Error("Could not reach the game service. Check that it is running and try again.");
+    const error = new Error("Could not reach the game service. Check that it is running and try again.");
+    error.code = "network_error";
+    throw error;
   }
 
   const body = await response.json().catch(() => null);

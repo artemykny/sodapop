@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "../../i18n/I18n.jsx";
 
 export function GameSelector({ games, value, onChange }) {
+  const { plural, t } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
@@ -53,7 +55,7 @@ export function GameSelector({ games, value, onChange }) {
         type="button"
         className="game-menu-trigger"
         ref={triggerRef}
-        aria-label={`Choose game. ${selectedGame.name} selected.`}
+        aria-label={t("game.selectorLabel", { game: selectedGame.name })}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
@@ -68,10 +70,10 @@ export function GameSelector({ games, value, onChange }) {
       {open && (
         <div className="game-menu-popover">
           <div className="game-menu-heading">
-            <strong>Choose a game</strong>
-            <span>{games.length} available</span>
+            <strong>{t("game.choose")}</strong>
+            <span>{plural("game.available", games.length)}</span>
           </div>
-          <div className="game-menu-options" role="listbox" aria-label="Games">
+          <div className="game-menu-options" role="listbox" aria-label={t("game.games")}>
             {games.map((game, index) => {
               const selected = game.id === selectedGame.id;
               return (
@@ -92,7 +94,7 @@ export function GameSelector({ games, value, onChange }) {
                   <span className="game-menu-icon" aria-hidden="true">{game.mark}</span>
                   <span className="game-menu-copy">
                     <strong>{game.name}</strong>
-                    <small>{game.category} · {game.players}</small>
+                    <small>{game.category}</small>
                   </span>
                   <span className="game-menu-check" aria-hidden="true">✓</span>
                 </button>

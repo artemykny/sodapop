@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useI18n } from "../../../i18n/I18n.jsx";
 
 export function Answering({ state, send }) {
+  const { t } = useI18n();
   const [answer, setAnswer] = useState(state.your_answer || "");
   const [submitting, setSubmitting] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
@@ -19,23 +21,23 @@ export function Answering({ state, send }) {
     return (
       <div className="locked-card">
         <div className="lock-seal">✓</div>
-        <h2>Answer locked</h2>
-        <p>Only you can see this answer until discussion begins.</p>
+        <h2>{t("answering.locked")}</h2>
+        <p>{t("answering.lockedHelp")}</p>
         <div className="locked-choice">
-          <span>Your question</span><strong>{state.your_prompt}</strong>
-          <span>Your answer</span><blockquote>“{state.your_answer}”</blockquote>
+          <span>{t("answering.yourQuestion")}</span><strong>{state.your_prompt}</strong>
+          <span>{t("answering.yourAnswer")}</span><blockquote>“{state.your_answer}”</blockquote>
         </div>
-        <button className="secondary-button" onClick={unlockAnswer} disabled={unlocking}>{unlocking ? "Unlocking…" : "Edit answer"}</button>
+        <button className="secondary-button" onClick={unlockAnswer} disabled={unlocking}>{t(unlocking ? "answering.unlocking" : "answering.edit")}</button>
       </div>
     );
   }
 
   return (
     <form className="answer-card" onSubmit={submitAnswer}>
-      <span className="card-label">Your secret question</span>
+      <span className="card-label">{t("answering.secretQuestion")}</span>
       <h2>{state.your_prompt}</h2>
-      <label className="answer-input"><span>Your answer</span><textarea value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={500} placeholder="Write something believable…" autoFocus disabled={submitting} /></label>
-      <div className="answer-footer"><span>{answer.length} / 500</span><button className="primary-button compact" disabled={!answer.trim() || submitting}>{submitting ? "Submitting…" : "Lock answer"} <span>→</span></button></div>
+      <label className="answer-input"><span>{t("answering.yourAnswer")}</span><textarea value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={500} placeholder={t("answering.placeholder")} autoFocus disabled={submitting} /></label>
+      <div className="answer-footer"><span>{answer.length} / 500</span><button className="primary-button compact" disabled={!answer.trim() || submitting}>{t(submitting ? "answering.submitting" : "answering.lock")} <span>→</span></button></div>
     </form>
   );
 }

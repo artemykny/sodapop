@@ -11,6 +11,7 @@ test("shares and remembers the player name across room forms", async ({ page }) 
   const gameList = page.getByRole("listbox", { name: "Games" });
   await expect(gameList).toBeVisible();
   await expect(gameList.getByRole("option", { name: /Odd One Out/ })).toHaveAttribute("aria-selected", "true");
+  await expect(gameList.getByText("3–20 players", { exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(gameList).toBeHidden();
   await page.getByLabel("Your name").fill("Casey");
@@ -35,6 +36,34 @@ test("shows a useful placeholder when no question packs exist", async ({ page })
   await expect(page.getByText("Upload a JSON file below, or add reusable packs in the admin panel.", { exact: true })).toBeVisible();
   await expect(page.getByText(/No packs match/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Upload", exact: true })).toBeVisible();
+});
+
+test("switches the player experience to Russian and remembers it", async ({ page }) => {
+  await page.goto("/");
+  const languageTrigger = page.getByRole("button", { name: "Language: English" });
+  await expect(languageTrigger).toHaveCSS("box-shadow", "none");
+  await languageTrigger.click();
+  await expect(page.getByRole("listbox", { name: "Language" })).toHaveCSS("box-shadow", "none");
+  await page.getByRole("option", { name: /Russian/ }).click();
+
+  await expect(page.locator("html")).toHaveAttribute("lang", "ru");
+  await expect(page.getByRole("heading", { name: "Слейся с толпой. Найди лишнего." })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Создать комнату" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Выбрать игру. Сейчас выбрана «Кто лишний?»." })).toBeVisible();
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ru");
+  await expect(page.getByRole("tab", { name: "Войти в комнату" })).toBeVisible();
+
+  await page.goto("/admin");
+  await expect(page.getByRole("heading", { name: "Панель администратора" })).toBeVisible();
+  await expect(page.getByLabel("Пароль администратора")).toBeVisible();
+
+  await page.getByRole("button", { name: "Язык: Русский" }).click();
+  await page.getByRole("option", { name: /Английский/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await page.goto("/");
+  await expect(page.getByRole("tab", { name: "Create a room" })).toBeVisible();
 });
 
 test("loads backend-owned pack metadata and creates a room", async ({ page, request }) => {
@@ -124,8 +153,10 @@ test("admin dashboard authenticates and configures question packs", async ({ pag
 
   page.once("dialog", (dialog) => dialog.accept());
   await page.locator(".admin-pack-row").filter({ hasText: "Admin E2E pack" }).click();
-  await page.getByRole("dialog", { name: "Admin E2E pack" }).getByRole("button", { name: "Delete pack" }).click();
-  await expect(page.getByText("Admin E2E pack", { exact: true })).toBeHidden();
+  const packDialog = page.getByRole("dialog", { name: "Admin E2E pack" });
+  await packDialog.getByRole("button", { name: "Delete pack" }).click();
+  await expect(packDialog).toBeHidden();
+  await expect(page.locator(".admin-pack-row").filter({ hasText: "Admin E2E pack" })).toBeHidden();
   await page.getByRole("button", { name: /General/ }).click();
   await expect(page.getByText("oddoneout", { exact: true })).toBeVisible();
 });
@@ -176,7 +207,7 @@ test("accepts custom questions as write-only room input", async ({ page }) => {
   await page.getByLabel("Rounds").fill("1");
   await page.getByLabel("Room password").fill("custom-secret");
   await page.getByRole("button", { name: "Review room" }).click();
-  await expect(page.getByRole("region", { name: "Ready to create" })).toContainText("1 custom pairs");
+  await expect(page.getByRole("region", { name: "Ready to create" })).toContainText("1 pair");
   await page.getByRole("button", { name: "Create room" }).click();
   await expect(page.getByRole("heading", { name: "The room is open" })).toBeVisible();
 
@@ -231,13 +262,13 @@ test("protected invites include access while manual joins request a password", a
     await manualGuest.getByRole("button", { name: "Continue to name" }).click();
     await manualGuest.getByLabel("Your display name").fill("Manual Guest");
     await manualGuest.getByRole("button", { name: "Join room" }).click();
-    await expect(manualGuest.getByRole("alert")).toContainText("invalid room password");
+    await expect(manualGuest.getByRole("alert")).toContainText("room password is incorrect");
     await manualGuest.getByLabel("Password").fill("correct horse");
     await manualGuest.getByRole("button", { name: "Continue to name" }).click();
     await expect(manualGuest.getByLabel("Your display name")).toHaveValue("Manual Guest");
     await manualGuest.getByLabel("Your display name").fill("Invited Guest");
     await manualGuest.getByRole("button", { name: "Join room" }).click();
-    await expect(manualGuest.getByRole("alert")).toContainText("display name is already in use");
+    await expect(manualGuest.getByRole("alert")).toContainText("name is already in use");
     await expect(manualGuest.getByLabel("Your display name")).toBeVisible();
     await expect(manualGuest.getByLabel("Password")).toHaveCount(0);
     await manualGuest.getByLabel("Your display name").fill("Manual Guest");

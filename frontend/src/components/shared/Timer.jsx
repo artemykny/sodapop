@@ -1,6 +1,9 @@
+import { useI18n } from "../../i18n/I18n.jsx";
+
 export function Timer({ seconds, paused = false, settings }) {
+  const { t } = useI18n();
   const urgent = seconds <= 10;
-  const label = paused ? `Paused with ${seconds} seconds remaining` : `${seconds} seconds remaining`;
+  const label = t(paused ? "timer.pausedLabel" : "timer.remainingLabel", { count: seconds });
   return (
     <div className="timer-popover">
       <div className={`timer ${urgent ? "urgent" : ""} ${paused ? "paused" : ""}`} aria-label={label} aria-describedby="timer-settings-tooltip" tabIndex="0">
@@ -8,13 +11,13 @@ export function Timer({ seconds, paused = false, settings }) {
       </div>
       {settings && (
         <div className="timer-settings-tooltip" id="timer-settings-tooltip" role="tooltip">
-          <strong>Game settings</strong>
+          <strong>{t("timer.settings")}</strong>
           <dl>
-            <Setting label="Players" value={settings.player_limit} />
-            <Setting label="Rounds" value={settings.rounds} />
-            <Setting label="Answer" value={`${settings.answer_seconds}s`} />
-            <Setting label="Discussion" value={`${settings.discussion_seconds}s`} />
-            <Setting label="Voting" value={`${settings.voting_seconds}s`} />
+            <Setting label={t("timer.players")} value={settings.player_limit} />
+            <Setting label={t("timer.rounds")} value={settings.rounds} />
+            <Setting label={t("timer.answer")} value={`${settings.answer_seconds}s`} />
+            <Setting label={t("timer.discussion")} value={`${settings.discussion_seconds}s`} />
+            <Setting label={t("timer.voting")} value={`${settings.voting_seconds}s`} />
           </dl>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { socketUrl } from "../api/client.js";
+import { useI18n } from "../i18n/I18n.jsx";
 import { applyRoomEvent } from "../state/roomEvents.js";
 
 function uid() {
@@ -7,6 +8,7 @@ function uid() {
 }
 
 export function useGameSocket(session, setSession, setNotice) {
+  const { t } = useI18n();
   const [connection, setConnection] = useState("connecting");
   const socketRef = useRef(null);
   const pendingRef = useRef(new Map());
@@ -30,7 +32,9 @@ export function useGameSocket(session, setSession, setNotice) {
           } : current);
         }
         if (message.type === "error") {
-          setNotice(message.payload?.message || "That move was not accepted.");
+          const code = message.payload?.code;
+          const translated = code ? t(`errors.${code}`) : "";
+          setNotice(translated && translated !== `errors.${code}` ? translated : message.payload?.message || t("errors.move_rejected"));
         }
         if (message.type === "ack" || message.type === "error") {
           const callback = pendingRef.current.get(message.request_id);
@@ -58,7 +62,7 @@ export function useGameSocket(session, setSession, setNotice) {
 
   const send = useCallback((type, payload = {}, onResult) => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) {
-      setNotice("Reconnecting to the room. Try again in a moment.");
+      setNotice(t("errors.reconnecting"));
       onResult?.(false);
       return false;
     }
@@ -66,7 +70,7 @@ export function useGameSocket(session, setSession, setNotice) {
     if (onResult) pendingRef.current.set(requestId, onResult);
     socketRef.current.send(JSON.stringify({ type, request_id: requestId, payload }));
     return true;
-  }, [setNotice]);
+  }, [setNotice, t]);
 
   return { connection, send };
 }

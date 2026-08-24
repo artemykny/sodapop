@@ -35,8 +35,9 @@ export async function createRoom(page, {
   await page.getByLabel("Your name").fill(hostName);
   await page.getByLabel("Room name").fill(roomName);
   await page.getByRole("button", { name: "Continue to questions" }).click();
-  await expect(page.getByRole("radio", { name: packName })).toBeVisible();
-  await page.getByRole("radio", { name: packName }).check();
+  const packOption = page.locator("label.pack-browser-option").filter({ has: page.getByText(packName, { exact: true }) });
+  await expect(packOption.getByRole("radio")).toBeVisible();
+  await packOption.getByRole("radio").check();
   await page.getByRole("button", { name: "Continue to setup" }).click();
   await page.getByLabel("Rounds").fill(rounds);
   await page.getByLabel("Room password").fill(password);
